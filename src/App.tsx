@@ -258,17 +258,17 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
+    <div className="min-h-screen bg-gray-100 px-8 py-4">
       <header className="mb-8">
-        <h1 className="text-3xl font-heading font-bold text-center text-blue-600">
+        <h1 className="text-center font-heading text-3xl font-bold text-blue-600">
           Badminton Court Management
         </h1>
       </header>
 
-      <div className="max-w-6xl mx-auto space-y-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <section className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold mb-4 flex items-center">
+      <div className="mx-auto max-w-6xl space-y-4">
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
+          <section className="rounded-lg bg-white p-6 shadow-md">
+            <h2 className="mb-4 flex items-center text-xl font-semibold">
               <Users className="mr-2" /> Player Pool
             </h2>
 
@@ -280,8 +280,8 @@ function App() {
             />
           </section>
 
-          <section className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold mb-4 flex items-center">
+          <section className="rounded-lg bg-white p-6 shadow-md">
+            <h2 className="mb-4 flex items-center text-xl font-semibold">
               <PlaySquare className="mr-2" /> Court Management
             </h2>
 
@@ -292,8 +292,8 @@ function App() {
           </section>
         </div>
 
-        <section className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-xl font-semibold mb-4 flex items-center">
+        <section className="rounded-lg bg-white p-6 shadow-md">
+          <h2 className="mb-4 flex items-center text-xl font-semibold">
             <LayoutGrid className="mr-2" /> Courts
           </h2>
 

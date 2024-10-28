@@ -46,12 +46,12 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
           value={newPlayerName}
           onChange={(e) => setNewPlayerName(e.target.value)}
           placeholder="Enter player name"
-          className="flex-grow px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="min-w-0 flex-grow rounded-l-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
 
         <button
           type="submit"
-          className="bg-blue-500 text-white px-4 py-2 rounded-r-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center"
+          className="flex items-center rounded-r-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <UserPlus size={20} className="mr-2" />
           Add
@@ -64,13 +64,14 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
         ))}
       </div> */}
 
-      <ul className="grid space-y-2">
+      <ul className="grid max-h-[25vh] auto-cols-fr grid-cols-2 gap-x-3 gap-y-2 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
         {players.map(
           (player, index) =>
             player.status === "available" && (
               <PlayerListItem
                 player={player}
                 key={index}
+                disabled={index + 1 > 8}
                 selectPlayer={() => selectPlayer(player)}
                 selected={selectedPlayers.some(
                   (selectedPlayer) => selectedPlayer.id === player.id,
