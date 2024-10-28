@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  @font-face {
+    font-family: "Fira Sans";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url(https://fonts.gstatic.com/l/font?kit=va9E4kDNxMZdWfMOD5VflYLMSTfNSmz_pXniKE__sIpJDfOKpkdVI84qcK5T1fWiiFr7DmZSooShSKVSrPJa6uvbODO-hjyR11zSBo9UtJNodUJx&skey=6bde03e5f15b0572&v=v17)
+      format("woff2");
+  }
+  @font-face {
+    font-family: "Fira Sans Condensed";
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url(https://fonts.gstatic.com/l/font?kit=wEOsEADFm8hSaQTFG18FErVhsC9x-tarWU3IiMZ-dRZav7EfII3khJJIdcp359HeZCB9MM9IuRZJ08YjuB2ZKY3U4IU5LxU-5HzGmSSOXUb4bmJkHu3MsT4AQ5vXP43NnA&skey=4e18c89becbd4d36&v=v10)
+      format("woff2");
+  }
+
+  html,
+  body {
+    font-family: "Fira Sans", sans-serif;
+  }
+}
