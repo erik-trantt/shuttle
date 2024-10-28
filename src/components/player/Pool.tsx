@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { UserPlus } from "lucide-react";
+import { PlayCircle, UserPlus } from "lucide-react";
 import { v4 as uuid } from "uuid";
 import PlayerListItem from "./ListItem";
 import { Player } from "../../types";
@@ -9,6 +9,7 @@ interface PlayerPoolProps {
   addPlayer: (player: Player) => void;
   selectPlayer: (player: Player) => void;
   selectedPlayers: Player[];
+  startGame: () => void;
 }
 
 const PlayerPool: React.FC<PlayerPoolProps> = ({
@@ -16,6 +17,7 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
   addPlayer,
   selectPlayer,
   selectedPlayers,
+  startGame,
 }) => {
   const [newPlayerName, setNewPlayerName] = useState("");
 
@@ -64,7 +66,13 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
         ))}
       </div> */}
 
-      <ul className="grid max-h-[25vh] auto-cols-fr grid-cols-2 gap-x-3 gap-y-2 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
+      <ul
+        className="mb-4 grid h-[20vh] gap-x-2 gap-y-2 overflow-y-auto"
+        style={{
+          gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+          gridTemplateRows: "repeat(auto-fit, 1.5rem)",
+        }}
+      >
         {players.map(
           (player, index) =>
             player.status === "available" && (
@@ -80,6 +88,25 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
             ),
         )}
       </ul>
+
+      <div
+        style={{
+          order: 1001,
+        }}
+      >
+        <button
+          onClick={startGame}
+          disabled={selectedPlayers.length !== 4}
+          className={`flex w-full items-center justify-center rounded-md px-4 py-2 ${
+            selectedPlayers.length === 4
+              ? "bg-green-500 text-white hover:bg-green-600"
+              : "cursor-not-allowed bg-gray-300 text-gray-500"
+          }`}
+        >
+          <PlayCircle size={20} className="mr-2" />
+          Start Match
+        </button>
+      </div>
     </div>
   );
 };

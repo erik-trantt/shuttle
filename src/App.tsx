@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { Users, PlaySquare, LayoutGrid } from "lucide-react";
+import { Users, LayoutGrid } from "lucide-react";
 import { v4 as uuid } from "uuid";
 import PlayerPool from "./components/player/Pool";
-import CourtManagement from "./components/CourtManagement";
 import CourtDisplay from "./components/CourtDisplay";
 import { Court, CourtData, Game, Match, Player } from "./types";
 
@@ -266,31 +265,19 @@ function App() {
       </header>
 
       <div className="mx-auto max-w-6xl space-y-4">
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
-          <section className="rounded-lg bg-white p-6 shadow-md">
-            <h2 className="mb-4 flex items-center text-xl font-semibold">
-              <Users className="mr-2" /> Player Pool
-            </h2>
+        <section className="rounded-lg bg-white p-6 shadow-md">
+          <h2 className="mb-4 flex items-center text-xl font-semibold">
+            <Users className="mr-2" /> Player Pool
+          </h2>
 
-            <PlayerPool
-              players={players}
-              addPlayer={addPlayer}
-              selectPlayer={selectPlayer}
-              selectedPlayers={selectedPlayers}
-            />
-          </section>
-
-          <section className="rounded-lg bg-white p-6 shadow-md">
-            <h2 className="mb-4 flex items-center text-xl font-semibold">
-              <PlaySquare className="mr-2" /> Court Management
-            </h2>
-
-            <CourtManagement
-              selectedPlayers={selectedPlayers}
-              startGame={startGame}
-            />
-          </section>
-        </div>
+          <PlayerPool
+            players={players}
+            addPlayer={addPlayer}
+            selectPlayer={selectPlayer}
+            selectedPlayers={selectedPlayers}
+            startGame={startGame}
+          />
+        </section>
 
         <section className="rounded-lg bg-white p-6 shadow-md">
           <h2 className="mb-4 flex items-center text-xl font-semibold">

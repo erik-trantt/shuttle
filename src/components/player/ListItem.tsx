@@ -18,14 +18,14 @@ const PlayerListItem: React.FC<PlayerListItemProps> = ({
     <li
       key={player.index}
       className={[
-        "cursor-pointer rounded-md p-2",
+        "cursor-pointer rounded-md px-2 py-1 text-xs",
         selected
           ? "bg-blue-100 text-blue-800"
           : "bg-gray-100 hover:bg-gray-200",
         disabled && "pointer-events-none opacity-25",
       ].join(" ")}
       style={{
-        order: disabled ? "10000" : undefined,
+        order: disabled ? 1e10 : player.index ? player.index : undefined,
       }}
       onClick={() => selectPlayer(player)}
     >
