@@ -16,14 +16,10 @@ const CourtDisplay: React.FC<CourtDisplayProps> = ({
       {Object.entries(courtData).map(([_id, data]) => (
         <div
           key={data.gameId || data.court.id}
-          className={`rounded-lg px-4 py-2 shadow-md ${
-            data.gameId ? "bg-green-100" : "bg-white"
-          }`}
+          className={`relative rounded-lg px-4 py-2 shadow-md`}
         >
-          <div className="mb-2 flex items-center justify-between">
-            <h3 className="text-sm font-semibold">
-              {data.court.name} - {data.court.status}
-            </h3>
+          <div className="absolute left-0 top-0 mb-2 flex w-full items-center justify-between rounded-t bg-gray-100 px-2">
+            <h3 className="text-sm font-semibold">{data.court.name}</h3>
 
             {data.gameId && (
               <button
@@ -36,12 +32,12 @@ const CourtDisplay: React.FC<CourtDisplayProps> = ({
             )}
           </div>
 
-          <div className="min-h-[4rem]">
+          <div className="h-24">
             {data.game && (
-              <ul className="mt-2 text-sm text-red-500">
+              <ul className="h-20 pt-4 text-sm text-red-500">
                 {data.players.map((player, index) => (
                   <li key={index} className="text-gray-700">
-                    {player.name} - {player.status}
+                    {player.name}
                   </li>
                 ))}
               </ul>
@@ -49,6 +45,13 @@ const CourtDisplay: React.FC<CourtDisplayProps> = ({
           </div>
         </div>
       ))}
+
+      {/* <dialog open className="fixed inset-0 h-screen w-screen bg-white">
+        <p>Greetings, one and all!</p>
+        <form method="dialog">
+          <button>OK</button>
+        </form>
+      </dialog> */}
     </div>
   );
 };

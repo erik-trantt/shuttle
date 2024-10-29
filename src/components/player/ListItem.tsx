@@ -31,6 +31,7 @@ const PlayerListItem: React.FC<PlayerListItemProps> = ({
         order: disabled ? 1e13 : order, // Note to self, `disabled` is reactive and this is needed
       }}
       onClick={() => selectPlayer(player)}
+      onTouchEnd={() => selectPlayer(player)}
     >
       {player.name}
     </li>
