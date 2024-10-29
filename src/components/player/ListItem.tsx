@@ -1,5 +1,6 @@
 import React from "react";
 import { Player } from "../../types";
+import { parseQueueNumberToOrder } from "../../utils";
 
 export interface PlayerListItemProps {
   disabled: boolean;
@@ -14,6 +15,8 @@ const PlayerListItem: React.FC<PlayerListItemProps> = ({
   selectPlayer,
   selected,
 }) => {
+  const order = parseQueueNumberToOrder(player.queueNumber);
+
   return (
     <li
       key={player.index}
@@ -25,7 +28,7 @@ const PlayerListItem: React.FC<PlayerListItemProps> = ({
         disabled && "pointer-events-none opacity-25",
       ].join(" ")}
       style={{
-        order: disabled ? 1e10 : player.index ? player.index : undefined,
+        order: disabled ? 1e13 : order, // Note to self, `disabled` is reactive and this is needed
       }}
       onClick={() => selectPlayer(player)}
     >

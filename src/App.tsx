@@ -4,6 +4,7 @@ import { v4 as uuid } from "uuid";
 import PlayerPool from "./components/player/Pool";
 import CourtDisplay from "./components/CourtDisplay";
 import { Court, CourtData, Game, Match, Player } from "./types";
+import { generateQueueNumber } from "./utils";
 
 // interface ShuttleApp {
 //   //
@@ -52,20 +53,19 @@ function App() {
   const PLAYER_NAMES = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "L"];
 
   const buildInitialPlayers = (): Player[] => {
-    return [...PLAYER_NAMES].map((name) => ({
+    return [...PLAYER_NAMES].map((name, index) => ({
       id: uuid(),
       name,
       status: "available",
+      index: index,
+      queueNumber: generateQueueNumber({
+        gameIndex: 0,
+        playerIndex: index,
+      }),
     }));
   };
 
   const buildInitialCourtData = (): CourtData => {
-    // Array.from({ length: 12 }, (_, i) => i).forEach(() =>
-    //   COURT_IDS.push(uuid()),
-    // );
-
-    // console.log(COURT_IDS);
-
     return Object.fromEntries(
       [...COURT_IDS].map((id, index) => [
         id,
@@ -91,26 +91,49 @@ function App() {
 
   const [selectedPlayers, setSelectedPlayers] = useState<Player[]>([]);
 
-  // console.log(COURT_IDS[0], courtData, courtData[COURT_IDS[0]]);
-
-  // const firstCourt: CourtData[0]["court"] = courtData[COURT_IDS[0]].court;
-
   const [nextCourt, setNextCourt] = useState<Court | null>(null);
 
-  const addPlayer = (newPlayer: Player) => {
+  const addPlayer = (name: string) => {
     if (!players.length) {
-      setPlayers([newPlayer]);
+      setPlayers([
+        {
+          id: uuid(),
+          name,
+          status: "available",
+          index: 0,
+          queueNumber: generateQueueNumber({
+            gameIndex: games.length,
+            playerIndex: 0,
+          }),
+        },
+      ]);
     }
 
-    const foundPlayer = players.some(
-      (player) => player.name === newPlayer.name || player.id === newPlayer.id,
+    const foundPlayer: Player | undefined = players.find(
+      (player) => player.name === name,
     );
 
     if (!foundPlayer) {
-      setPlayers([...players, newPlayer]);
+      setPlayers([
+        ...players,
+        {
+          id: uuid(),
+          name,
+          status: "available",
+          index: players.length - 1,
+          queueNumber: generateQueueNumber({
+            gameIndex: games.length,
+            playerIndex: players.length - 1,
+          }),
+        },
+      ]);
     }
   };
 
+  /**
+   * Select player.
+   * TODO: describe
+   */
   const selectPlayer = (player: Player) => {
     const selected = selectedPlayers.some(
       (selectPlayer) => selectPlayer.id === player.id,
@@ -129,6 +152,10 @@ function App() {
     }
   };
 
+  /**
+   * Start game.
+   * TODO: describe
+   */
   const startGame = () => {
     if (selectedPlayers.length !== 4) {
       console.log("Not enough player. Do nothing");
@@ -141,11 +168,6 @@ function App() {
     let assignedCourt = nextCourt || courtData[COURT_IDS[0]].court;
     assignedCourt.status = "playing";
 
-    // if (assignedCourt === null) {
-    //   console.log(courtData[COURT_IDS[0]]);
-    //   assignedCourt = courtData[COURT_IDS[0]].court;
-    // }
-
     const newGame: Game = {
       id: uuid(),
       courtId: assignedCourt.id,
@@ -157,33 +179,32 @@ function App() {
         playerIds: selectedPlayerIds.slice(2, 3),
         score: 0,
       },
-      timestamp: Math.round(Date.now() / 1e3),
+      index: games.length + 1,
+      timestamp: Date.now(),
     };
 
-    console.log("updating court data");
+    courtData[assignedCourt.id] = {
+      court: assignedCourt,
+      gameId: newGame.id,
+      game: newGame,
+      players: selectedPlayers,
+    };
 
-    _setCourtData(
-      Object.assign(courtData, {
-        [assignedCourt.id]: {
-          court: assignedCourt,
-          gameId: newGame.id,
-          game: newGame,
-          players: [...selectedPlayers],
-        },
-      }),
-    );
+    games.push(newGame);
 
-    setGames([...games, newGame]);
-
-    selectedPlayers.forEach((player) => (player.status = "unavailable"));
+    selectedPlayers.forEach((player, index) => {
+      player.status = "unavailable";
+      player.queueNumber = generateQueueNumber({
+        gameIndex: games.length,
+        playerIndex: index,
+      });
+    });
 
     setSelectedPlayers([]);
 
     const nextAvailableCourtData = Object.values(courtData).find(
       ({ court }) => court.status === "available",
     );
-
-    console.log(nextAvailableCourtData);
 
     if (nextAvailableCourtData) {
       setNextCourt(nextAvailableCourtData.court);
@@ -209,51 +230,33 @@ function App() {
     //   - players status: "unavailable" -> "available"
     courtToRelease.court.status = "available";
 
-    console.log("after clearing", courtToRelease.court.status);
-
     // - Delete game + gameId
     courtToRelease.game = undefined;
     courtToRelease.gameId = undefined;
 
-    console.log("after clearing", courtToRelease.game, courtToRelease.gameId);
-
     // - Set players' status to available
-    courtToRelease.players.forEach((player) => {
-      player.status === "available";
+    courtToRelease.players.forEach((player, index) => {
+      player.status = "available";
+      player.queueNumber = generateQueueNumber({
+        gameIndex: games.length,
+        playerIndex: index,
+      });
     });
-
-    setPlayers([...players, ...courtToRelease.players]);
 
     // - Set players to empty array
     courtToRelease.players = [];
-
-    _setCourtData(
-      Object.assign(courtData, {
-        [courtToRelease.court.id]: {
-          ...courtToRelease,
-        },
-      }),
-    );
-
-    console.log("after clearing", courtToRelease);
 
     const nextAvailableCourtData = Object.values(courtData).find(
       ({ court }) => court.status === "available",
     );
 
-    console.log(nextAvailableCourtData);
-
     if (
       nextAvailableCourtData &&
-      nextAvailableCourtData.court.index &&
       nextCourt &&
-      nextCourt.index &&
-      nextAvailableCourtData.court.index < nextCourt.index
+      nextAvailableCourtData.court.index <= nextCourt.index
     ) {
-      setNextCourt(nextAvailableCourtData.court);
+      setNextCourt({ ...nextAvailableCourtData.court });
     }
-
-    console.log(nextCourt);
   };
 
   return (
@@ -281,7 +284,7 @@ function App() {
 
         <section className="rounded-lg bg-white p-6 shadow-md">
           <h2 className="mb-4 flex items-center text-xl font-semibold">
-            <LayoutGrid className="mr-2" /> Courts
+            <LayoutGrid className="mr-2" /> Courts {games.length}
           </h2>
 
           <CourtDisplay courtData={courtData} releaseCourt={releaseCourt} />

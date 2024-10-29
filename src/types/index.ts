@@ -1,7 +1,7 @@
 export interface Court {
   id: string;
   name: string;
-  index?: number;
+  index: number;
   status: "available" | "unavailable" | "playing";
 }
 
@@ -9,6 +9,7 @@ export interface Player {
   id: string;
   name: string;
   index?: number;
+  queueNumber: string;
   status: "available" | "unavailable";
 }
 
@@ -32,6 +33,7 @@ export interface Game {
     playerIds: string[];
     score: number;
   };
+  index: number;
   timestamp: number;
 }
 

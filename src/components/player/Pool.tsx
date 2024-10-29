@@ -1,12 +1,11 @@
 import React, { useState } from "react";
 import { PlayCircle, UserPlus } from "lucide-react";
-import { v4 as uuid } from "uuid";
 import PlayerListItem from "./ListItem";
 import { Player } from "../../types";
 
 interface PlayerPoolProps {
   players: Player[];
-  addPlayer: (player: Player) => void;
+  addPlayer: (name: string) => void;
   selectPlayer: (player: Player) => void;
   selectedPlayers: Player[];
   startGame: () => void;
@@ -24,21 +23,11 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
   const handleAddPlayer = (e: React.FormEvent) => {
     e.preventDefault();
     if (newPlayerName.trim()) {
-      addPlayer({
-        id: uuid(),
-        name: newPlayerName.trim(),
-        status: "available",
-      });
+      addPlayer(newPlayerName.trim());
 
       setNewPlayerName("");
     }
   };
-
-  // const sortedPlayers: PlayerListItemProps[] = players.map((player, _index) => ({
-  //   player,
-  //   selected: selectedPlayers.includes(player.name),
-  //   selectPlayer: (name: string) => selectPlayer(name),
-  // }));
 
   return (
     <div>
@@ -60,12 +49,6 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
         </button>
       </form>
 
-      {/* <div>
-        {players.map((player, index) => (
-          <pre key={index}>{JSON.stringify(player, null, 2)}</pre>
-        ))}
-      </div> */}
-
       <ul
         className="mb-4 grid h-[20vh] gap-x-2 gap-y-2 overflow-y-auto"
         style={{
@@ -73,20 +56,17 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
           gridTemplateRows: "repeat(auto-fit, 1.5rem)",
         }}
       >
-        {players.map(
-          (player, index) =>
-            player.status === "available" && (
-              <PlayerListItem
-                player={player}
-                key={index}
-                disabled={index + 1 > 8}
-                selectPlayer={() => selectPlayer(player)}
-                selected={selectedPlayers.some(
-                  (selectedPlayer) => selectedPlayer.id === player.id,
-                )}
-              />
-            ),
-        )}
+        {players.map((player) => (
+          <PlayerListItem
+            player={player}
+            key={player.queueNumber}
+            disabled={player.status === "unavailable"}
+            selectPlayer={() => selectPlayer(player)}
+            selected={selectedPlayers.some(
+              (selectedPlayer) => selectedPlayer.id === player.id,
+            )}
+          />
+        ))}
       </ul>
 
       <div
