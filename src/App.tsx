@@ -4,7 +4,12 @@ import { v4 as uuid } from "uuid";
 import PlayerPool from "./components/player/Pool";
 import CourtDisplay from "./components/CourtDisplay";
 import { Court, CourtData, Game, Player } from "./types";
-import { generateQueueNumber } from "./utils";
+import {
+  COURT_IDS,
+  buildInitialCourtData,
+  buildInitialPlayers,
+  generateQueueNumber,
+} from "./utils";
 
 // interface ShuttleApp {
 //   //
@@ -34,77 +39,39 @@ import { generateQueueNumber } from "./utils";
 
 // export const ShuttleAppContext = React.createContext<ShuttleApp | null>(null);
 
+let initialPlayers: Player[] = [];
+let initialCourtData: CourtData = {};
+
+// https://react.dev/learn/you-might-not-need-an-effect#initializing-the-application
+// Initialize data only when running on the browser
+if (typeof window !== "undefined") {
+  // Only runs once per app load
+  initialPlayers = buildInitialPlayers();
+  initialCourtData = buildInitialCourtData();
+}
+
 function App() {
-  const COURT_IDS: string[] = [
-    "62478d70-a53f-464f-b036-f380929a3584",
-    "39c7d7b9-d13b-454c-abcd-e3317511026d",
-    "d7ef2003-dc31-42ca-bbc1-51205e8170fd",
-    "89b9cc5f-617e-4db2-96fd-ec9021626670",
-    "9f85c0ac-74bc-4264-8b35-3ed51c05dcef",
-    "b2e3a8ab-da0e-4f41-bb4e-80fd7352bb6e",
-    "2e13096d-428e-443d-88df-0f55212f0a70",
-    "3f681c47-7d4b-4018-8cbc-92b5779430fe",
-    "4d0100ef-1d42-4d0d-9504-a21aabde780a",
-    "145a6912-a579-499b-a022-ff54fbdb8ea0",
-    "a704b89f-2976-40a2-8f3a-47836c3d2ef8",
-    "0af47be0-b0c9-4f7a-9980-798076d5dcf2",
-  ];
-
-  const PLAYER_NAMES = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "L"];
-
-  const buildInitialPlayers = (): Player[] => {
-    return [...PLAYER_NAMES].map((name, index) => ({
-      id: uuid(),
-      name,
-      status: "available",
-      index: index,
-      queueNumber: generateQueueNumber({
-        gameIndex: 0,
-        playerIndex: index,
-      }),
-    }));
-  };
-
-  const buildInitialCourtData = (): CourtData => {
-    return Object.fromEntries(
-      [...COURT_IDS].map((id, index) => [
-        id,
-        {
-          court: {
-            id,
-            name: `Court ${index + 1}`,
-            index,
-            status: "available",
-          },
-          players: [],
-        },
-      ]),
-    );
-  };
-
-  const [players, setPlayers] = useState<Player[]>(buildInitialPlayers());
-  const [games, _games] = useState<Game[]>([]);
-
-  const [courtData, _courtData] = useState<CourtData>(buildInitialCourtData());
+  const [courtData, _setCourtData] = useState<CourtData>(initialCourtData);
+  const [players, setPlayers] = useState<Player[]>(initialPlayers);
+  const [games, _setGames] = useState<Game[]>([]);
 
   const [selectedPlayers, setSelectedPlayers] = useState<Player[]>([]);
-
   const [nextCourt, setNextCourt] = useState<Court | null>(null);
 
   const addPlayer = (name: string) => {
+    const basePlayer: Player = {
+      id: uuid(),
+      name,
+      status: "available",
+      index: 0,
+      queueNumber: generateQueueNumber({
+        gameIndex: games.length,
+        playerIndex: 0,
+      }),
+    };
+
     if (!players.length) {
-      setPlayers([
-        {
-          id: uuid(),
-          name,
-          status: "available",
-          index: 0,
-          queueNumber: generateQueueNumber({
-            gameIndex: games.length,
-            playerIndex: 0,
-          }),
-        },
-      ]);
+      setPlayers([basePlayer]);
     }
 
     const foundPlayer: Player | undefined = players.find(
@@ -112,19 +79,13 @@ function App() {
     );
 
     if (!foundPlayer) {
-      setPlayers([
-        ...players,
-        {
-          id: uuid(),
-          name,
-          status: "available",
-          index: players.length - 1,
-          queueNumber: generateQueueNumber({
-            gameIndex: games.length,
-            playerIndex: players.length - 1,
-          }),
-        },
-      ]);
+      basePlayer.index = players.length - 1;
+      basePlayer.queueNumber = generateQueueNumber({
+        gameIndex: games.length,
+        playerIndex: players.length - 1,
+      });
+
+      setPlayers([...players, basePlayer]);
     }
   };
 

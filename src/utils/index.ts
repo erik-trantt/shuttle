@@ -46,3 +46,5 @@ export function parseQueueNumberToOrder(queueNumber: string): string | number {
   const orderParts = queueNumber.split("-");
   return orderParts.join("");
 }
+
+export * from "./setup";
