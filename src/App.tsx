@@ -3,7 +3,7 @@ import { Users, LayoutGrid } from "lucide-react";
 import { v4 as uuid } from "uuid";
 import PlayerPool from "./components/player/Pool";
 import CourtDisplay from "./components/CourtDisplay";
-import { Court, CourtData, Game, Match, Player } from "./types";
+import { Court, CourtData, Game, Player } from "./types";
 import { generateQueueNumber } from "./utils";
 
 // interface ShuttleApp {
@@ -83,11 +83,9 @@ function App() {
   };
 
   const [players, setPlayers] = useState<Player[]>(buildInitialPlayers());
-  const [games, setGames] = useState<Game[]>([]);
+  const [games, _games] = useState<Game[]>([]);
 
-  const [courtData, _setCourtData] = useState<CourtData>(
-    buildInitialCourtData(),
-  );
+  const [courtData, _courtData] = useState<CourtData>(buildInitialCourtData());
 
   const [selectedPlayers, setSelectedPlayers] = useState<Player[]>([]);
 
@@ -165,7 +163,7 @@ function App() {
 
     console.log(COURT_IDS[0], courtData, courtData[COURT_IDS[0]]);
 
-    let assignedCourt = nextCourt || courtData[COURT_IDS[0]].court;
+    const assignedCourt = nextCourt || courtData[COURT_IDS[0]].court;
     assignedCourt.status = "playing";
 
     const newGame: Game = {
