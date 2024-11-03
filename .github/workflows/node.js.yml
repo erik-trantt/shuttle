@@ -5,7 +5,7 @@ name: Build and Deploy React app to GitHub Pages
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "publish-gh-pages" ]
   workflow_dispatch:
 
 jobs:
