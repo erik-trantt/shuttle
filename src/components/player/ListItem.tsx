@@ -41,7 +41,7 @@ const PlayerListItem: React.FC<PlayerListItemProps> = ({
         htmlFor={`player-${player.id}`}
         className={[
           "flex-grow cursor-pointer",
-          "rounded-md px-2 py-1 text-xs",
+          "rounded-md px-2 py-2 text-sm",
           selected ? "bg-blue-100" : "bg-gray-100 hover:bg-gray-200",
           disabled ? "pointer-events-none opacity-25" : "",
         ].join(" ")}

@@ -227,15 +227,15 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-100 px-8 py-4">
       <header className="mb-4 lg:mb-8">
-        <h1 className="font-heading text-lg font-bold text-blue-600 md:text-center lg:text-2xl">
+        <h1 className="font-heading text-lg font-bold text-blue-600 sm:text-center lg:text-2xl">
           Badminton Court Management
         </h1>
       </header>
 
       <div className="mx-auto max-w-6xl space-y-4">
         <section className="rounded-lg bg-white p-6 shadow-md">
-          <h2 className="mb-4 flex items-center text-xl font-semibold">
-            <Users className="mr-2" /> Player Pool
+          <h2 className="mb-4 flex items-center text-sm font-semibold sm:text-xl">
+            <Users size="1em" className="mr-2" /> Player Pool
           </h2>
 
           <PlayerPool
@@ -249,8 +249,8 @@ function App() {
         </section>
 
         <section className="rounded-lg bg-white p-6 shadow-md">
-          <h2 className="mb-4 flex items-center text-xl font-semibold">
-            <LayoutGrid className="mr-2" /> Courts {games.length}
+          <h2 className="mb-4 flex items-center text-sm font-semibold sm:text-xl">
+            <LayoutGrid size="1em" className="mr-2" /> Courts {games.length}
           </h2>
 
           <CourtDisplay courtData={courtData} releaseCourt={releaseCourt} />

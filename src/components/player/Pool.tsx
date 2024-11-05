@@ -79,9 +79,9 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
 
         <button
           type="submit"
-          className="flex items-center rounded-r-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex items-center rounded-r-md bg-blue-500 px-4 py-2 text-xs text-white hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:text-base"
         >
-          <UserPlus size={20} className="mr-2" />
+          <UserPlus size="1.5em" className="mr-2" />
           Add
         </button>
       </form>
@@ -89,8 +89,8 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
       <ul
         className="mb-4 grid h-[20vh] gap-x-2 gap-y-2 overflow-y-auto"
         style={{
-          gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
-          gridTemplateRows: "repeat(auto-fit, 1.5rem)",
+          gridTemplateColumns: "repeat(auto-fit, minmax(125px, 1fr))",
+          gridTemplateRows: "repeat(auto-fill, minmax(2em, 1fr))",
         }}
       >
         {players.map((player) => (
@@ -106,26 +106,26 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
         ))}
       </ul>
 
-      <div>
+      <div className="flex flex-wrap gap-2 text-xs sm:text-base">
         <button
           onClick={startGame}
           disabled={selectedPlayers.length !== 4}
-          className={`flex w-full items-center justify-center rounded-md px-4 py-2 ${
+          className={`inline-flex w-full flex-1 touch-manipulation items-center justify-center rounded-md px-6 py-2 ${
             selectedPlayers.length === 4
               ? "bg-green-500 text-white hover:bg-green-600"
               : "cursor-not-allowed bg-gray-300 text-gray-500"
           }`}
         >
-          <PlayCircle size={20} className="mr-2" />
-          Start Match
+          <PlayCircle size="1.5em" className="mr-2" />
+          <span className="whitespace-nowrap">Start Match</span>
         </button>
 
         <button
           type="button"
           onClick={randomizePlayers}
-          className={`flex w-full items-center justify-center rounded-md px-4 py-2 active:bg-gray-100`}
+          className={`inline-flex w-full flex-1 touch-manipulation items-center justify-center rounded-md px-6 py-2 active:bg-gray-100`}
         >
-          <Dices size={20} className="mr-2" />
+          <Dices size="1.5em" className="mr-2" />
           Suggest
         </button>
       </div>
