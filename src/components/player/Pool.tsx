@@ -7,6 +7,7 @@ interface PlayerPoolProps {
   players: Player[];
   addPlayer: (name: string) => void;
   selectPlayer: (player: Player) => void;
+  selectPlayers: (players: Player[]) => void;
   selectedPlayers: Player[];
   startGame: () => void;
 }
@@ -15,6 +16,7 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
   players,
   addPlayer,
   selectPlayer,
+  selectPlayers,
   selectedPlayers,
   startGame,
 }) => {
@@ -27,6 +29,35 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
 
       setNewPlayerName("");
     }
+  };
+
+  const randomizePlayers = () => {
+    const availablePlayers = players.filter(
+      (player) => player.status === "available",
+    );
+
+    if (availablePlayers.length < 4) {
+      console.error(
+        "Not enough players to form a match. Please wait till there are at least 4 available players.",
+      );
+      return;
+    }
+
+    const selectedPlayerIndexes: number[] = [];
+
+    while (selectedPlayerIndexes.length < 4) {
+      const randomizedIndex = Math.floor(
+        Math.random() * availablePlayers.length,
+      );
+
+      if (!selectedPlayerIndexes.includes(randomizedIndex)) {
+        selectedPlayerIndexes.push(randomizedIndex);
+      }
+    }
+
+    selectPlayers(
+      selectedPlayerIndexes.map((playerIndex) => availablePlayers[playerIndex]),
+    );
   };
 
   return (
@@ -81,6 +112,10 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
         >
           <PlayCircle size={20} className="mr-2" />
           Start Match
+        </button>
+
+        <button type="button" onClick={randomizePlayers}>
+          Randomize
         </button>
       </div>
     </div>

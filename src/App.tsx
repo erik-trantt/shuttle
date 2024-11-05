@@ -113,6 +113,10 @@ function App() {
     }
   };
 
+  const selectPlayers = (players: Player[]) => {
+    setSelectedPlayers(players);
+  };
+
   /**
    * Start game.
    * TODO: describe
@@ -238,6 +242,7 @@ function App() {
             players={players}
             addPlayer={addPlayer}
             selectPlayer={selectPlayer}
+            selectPlayers={selectPlayers}
             selectedPlayers={selectedPlayers}
             startGame={startGame}
           />
