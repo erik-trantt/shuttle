@@ -45,6 +45,12 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
 
     const selectedPlayerIndexes: number[] = [];
 
+    // Skip randomizing if there are 4 available players left in the pool
+    if (availablePlayers.length === 4) {
+      selectPlayers(availablePlayers);
+      return;
+    }
+
     while (selectedPlayerIndexes.length < 4) {
       const randomizedIndex = Math.floor(
         Math.random() * availablePlayers.length,
