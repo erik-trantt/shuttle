@@ -2,7 +2,11 @@ import React, { useState } from "react";
 import { Dices, PlayCircle, UserPlus } from "lucide-react";
 import PlayerListItem from "./ListItem";
 import { Player } from "../../types";
-import { DOUBLE_GAME_PLAYER_NUMBER } from "../../utils";
+import {
+  DOUBLE_GAME_PLAYER_NUMBER,
+  DOUBLE_GAME_PLAYER_SUGGEST_SIZE,
+  parseQueueNumberToOrder,
+} from "../../utils";
 
 interface PlayerPoolProps {
   players: Player[];
@@ -32,11 +36,17 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
     }
   };
 
-  const randomizePlayers = () => {
-    const availablePlayers = players.filter(
-      (player) => player.status === "available",
+  const availablePlayers = players
+    .filter((player) => player.status === "available")
+    .sort(
+      (playerA, playerB) =>
+        Number(parseQueueNumberToOrder(playerA.queueNumber)) -
+        Number(parseQueueNumberToOrder(playerB.queueNumber)),
     );
+  const randomizeRangeStart =
+    DOUBLE_GAME_PLAYER_NUMBER - DOUBLE_GAME_PLAYER_SUGGEST_SIZE;
 
+  const randomizePlayers = () => {
     if (availablePlayers.length < DOUBLE_GAME_PLAYER_NUMBER) {
       console.error(
         "Not enough players to form a match. Please wait till there are at least DOUBLE_GAME_PLAYER_NUMBER available players.",
@@ -44,27 +54,33 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
       return;
     }
 
-    const selectedPlayerIndexes: number[] = [];
-
     // Skip randomizing if the number of available players is equal to the expected number of players per game
     if (availablePlayers.length === DOUBLE_GAME_PLAYER_NUMBER) {
       selectPlayers(availablePlayers);
       return;
     }
 
-    while (selectedPlayerIndexes.length < DOUBLE_GAME_PLAYER_NUMBER) {
-      const randomizedIndex = Math.floor(
-        Math.random() * availablePlayers.length,
-      );
+    const randomizedPlayerIndexes: number[] = [];
 
-      if (!selectedPlayerIndexes.includes(randomizedIndex)) {
-        selectedPlayerIndexes.push(randomizedIndex);
+    while (randomizedPlayerIndexes.length < DOUBLE_GAME_PLAYER_SUGGEST_SIZE) {
+      const randomizedIndex =
+        Math.floor(
+          Math.random() * (availablePlayers.length - randomizeRangeStart),
+        ) + randomizeRangeStart;
+
+      if (!randomizedPlayerIndexes.includes(randomizedIndex)) {
+        randomizedPlayerIndexes.push(randomizedIndex);
       }
     }
 
-    selectPlayers(
-      selectedPlayerIndexes.map((playerIndex) => availablePlayers[playerIndex]),
-    );
+    selectPlayers([
+      ...Array.from(Array(randomizeRangeStart).keys()).map(
+        (startPlayerIndex) => availablePlayers[startPlayerIndex],
+      ),
+      ...randomizedPlayerIndexes.map(
+        (randomizedPlayerIndex) => availablePlayers[randomizedPlayerIndex],
+      ),
+    ]);
   };
 
   return (
@@ -90,19 +106,22 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
       <ul
         className="mb-4 grid h-[20vh] gap-x-2 gap-y-2 overflow-y-auto"
         style={{
-          gridTemplateColumns: "repeat(auto-fit, minmax(125px, 1fr))",
-          gridTemplateRows: "repeat(auto-fill, minmax(2em, 1fr))",
+          gridTemplateColumns: "repeat(auto-fill, minmax(125px, 1fr))",
+          gridTemplateRows: "repeat(auto-fill, 2em)",
         }}
       >
-        {players.map((player) => (
+        {availablePlayers.map((player, playerIndex) => (
           <PlayerListItem
             player={player}
             key={player.queueNumber}
             disabled={player.status === "unavailable"}
             selectPlayer={() => selectPlayer(player)}
-            selected={selectedPlayers.some(
-              (selectedPlayer) => selectedPlayer.id === player.id,
-            )}
+            selected={
+              playerIndex < randomizeRangeStart ||
+              selectedPlayers.some(
+                (selectedPlayer) => selectedPlayer.id === player.id,
+              )
+            }
           />
         ))}
       </ul>

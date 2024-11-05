@@ -22,12 +22,7 @@ const PlayerListItem: React.FC<PlayerListItemProps> = ({
   };
 
   return (
-    <li
-      className="flex"
-      style={{
-        order: disabled ? order : `-${order}`, // Note to self, `disabled` is reactive and this is needed
-      }}
-    >
+    <li className="flex" data-queue-number={order}>
       <input
         type="checkbox"
         name={player.id}
@@ -41,7 +36,7 @@ const PlayerListItem: React.FC<PlayerListItemProps> = ({
         htmlFor={`player-${player.id}`}
         className={[
           "flex-grow cursor-pointer",
-          "rounded-md px-2 py-2 text-sm",
+          "rounded-md px-2 py-1.5 text-sm",
           selected ? "bg-blue-100" : "bg-gray-100 hover:bg-gray-200",
           disabled ? "pointer-events-none opacity-25" : "",
         ].join(" ")}

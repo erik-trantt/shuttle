@@ -52,7 +52,7 @@ if (typeof window !== "undefined") {
 
 function App() {
   const [courtData, _setCourtData] = useState<CourtData>(initialCourtData);
-  const [games, _setGames] = useState<Game[]>([]);
+  const [games, setGames] = useState<Game[]>([]);
   const [players, setPlayers] = useState<Player[]>(initialPlayers);
 
   const [selectedPlayers, setSelectedPlayers] = useState<Player[]>([]);
@@ -153,7 +153,7 @@ function App() {
       players: selectedPlayers,
     };
 
-    games.push(newGame);
+    setGames([...games, newGame]);
 
     selectedPlayers.forEach((player) => {
       player.status = "unavailable";
