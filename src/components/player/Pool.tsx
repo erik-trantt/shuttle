@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { PlayCircle, UserPlus } from "lucide-react";
+import { Dices, PlayCircle, UserPlus } from "lucide-react";
 import PlayerListItem from "./ListItem";
 import { Player } from "../../types";
 
@@ -114,8 +114,13 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
           Start Match
         </button>
 
-        <button type="button" onClick={randomizePlayers}>
-          Randomize
+        <button
+          type="button"
+          onClick={randomizePlayers}
+          className={`flex w-full items-center justify-center rounded-md px-4 py-2 active:bg-gray-100`}
+        >
+          <Dices size={20} className="mr-2" />
+          Suggest
         </button>
       </div>
     </div>

@@ -226,8 +226,8 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-100 px-8 py-4">
-      <header className="mb-8">
-        <h1 className="text-center font-heading text-3xl font-bold text-blue-600">
+      <header className="mb-4 lg:mb-8">
+        <h1 className="font-heading text-lg font-bold text-blue-600 md:text-center lg:text-2xl">
           Badminton Court Management
         </h1>
       </header>
