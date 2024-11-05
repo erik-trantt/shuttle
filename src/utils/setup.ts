@@ -2,6 +2,9 @@ import { v4 as uuid } from "uuid";
 import { generateQueueNumber } from ".";
 import { CourtData, Player } from "../types";
 
+export const DOUBLE_GAME_PLAYER_NUMBER = 4;
+export const DOUBLE_GAME_PLAYER_SUGGEST_SIZE = 3;
+
 export const COURT_IDS: string[] = [
   "62478d70-a53f-464f-b036-f380929a3584",
   "39c7d7b9-d13b-454c-abcd-e3317511026d",

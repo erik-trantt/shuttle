@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Dices, PlayCircle, UserPlus } from "lucide-react";
 import PlayerListItem from "./ListItem";
 import { Player } from "../../types";
+import { DOUBLE_GAME_PLAYER_NUMBER } from "../../utils";
 
 interface PlayerPoolProps {
   players: Player[];
@@ -36,22 +37,22 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
       (player) => player.status === "available",
     );
 
-    if (availablePlayers.length < 4) {
+    if (availablePlayers.length < DOUBLE_GAME_PLAYER_NUMBER) {
       console.error(
-        "Not enough players to form a match. Please wait till there are at least 4 available players.",
+        "Not enough players to form a match. Please wait till there are at least DOUBLE_GAME_PLAYER_NUMBER available players.",
       );
       return;
     }
 
     const selectedPlayerIndexes: number[] = [];
 
-    // Skip randomizing if there are 4 available players left in the pool
-    if (availablePlayers.length === 4) {
+    // Skip randomizing if the number of available players is equal to the expected number of players per game
+    if (availablePlayers.length === DOUBLE_GAME_PLAYER_NUMBER) {
       selectPlayers(availablePlayers);
       return;
     }
 
-    while (selectedPlayerIndexes.length < 4) {
+    while (selectedPlayerIndexes.length < DOUBLE_GAME_PLAYER_NUMBER) {
       const randomizedIndex = Math.floor(
         Math.random() * availablePlayers.length,
       );
