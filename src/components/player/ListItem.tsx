@@ -23,27 +23,26 @@ const PlayerListItem: React.FC<PlayerListItemProps> = ({
 
   return (
     <li
-      key={player.index}
+      className="flex"
       style={{
-        order: disabled ? 1e13 : order, // Note to self, `disabled` is reactive and this is needed
+        order: disabled ? order : `-${order}`, // Note to self, `disabled` is reactive and this is needed
       }}
     >
       <input
         type="checkbox"
         name={player.id}
         id={`player-${player.id}`}
+        checked={selected}
         className="hidden"
-        onInput={handleOnChange}
+        onChange={handleOnChange}
       />
 
       <label
         htmlFor={`player-${player.id}`}
         className={[
-          "block w-full cursor-pointer",
+          "flex-grow cursor-pointer",
           "rounded-md px-2 py-1 text-xs",
-          selected
-            ? "bg-blue-100 text-blue-800"
-            : "bg-gray-100 hover:bg-gray-200",
+          selected ? "bg-blue-100" : "bg-gray-100 hover:bg-gray-200",
           disabled ? "pointer-events-none opacity-25" : "",
         ].join(" ")}
       >

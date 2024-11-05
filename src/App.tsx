@@ -52,11 +52,13 @@ if (typeof window !== "undefined") {
 
 function App() {
   const [courtData, _setCourtData] = useState<CourtData>(initialCourtData);
-  const [players, setPlayers] = useState<Player[]>(initialPlayers);
   const [games, _setGames] = useState<Game[]>([]);
+  const [players, setPlayers] = useState<Player[]>(initialPlayers);
 
   const [selectedPlayers, setSelectedPlayers] = useState<Player[]>([]);
-  const [nextCourt, setNextCourt] = useState<Court | null>(null);
+  const [nextCourt, setNextCourt] = useState<Court>(
+    initialCourtData[COURT_IDS[0]].court,
+  );
 
   const addPlayer = (name: string) => {
     const basePlayer: Player = {
@@ -82,7 +84,7 @@ function App() {
       basePlayer.index = players.length - 1;
       basePlayer.queueNumber = generateQueueNumber({
         gameIndex: games.length,
-        playerIndex: players.length - 1,
+        playerIndex: players.length,
       });
 
       setPlayers([...players, basePlayer]);
@@ -122,8 +124,6 @@ function App() {
 
     const selectedPlayerIds = selectedPlayers.map((player) => player.id);
 
-    console.log(COURT_IDS[0], courtData, courtData[COURT_IDS[0]]);
-
     const assignedCourt = nextCourt || courtData[COURT_IDS[0]].court;
     assignedCourt.status = "playing";
 
@@ -151,12 +151,8 @@ function App() {
 
     games.push(newGame);
 
-    selectedPlayers.forEach((player, index) => {
+    selectedPlayers.forEach((player) => {
       player.status = "unavailable";
-      player.queueNumber = generateQueueNumber({
-        gameIndex: games.length,
-        playerIndex: index,
-      });
     });
 
     setSelectedPlayers([]);
@@ -171,18 +167,16 @@ function App() {
   };
 
   /**
-   *
+   * Finish a game.
+   * TODO: Describe.
    */
   const releaseCourt = (courtId: string) => {
-    console.log(courtId);
     const courtToRelease: CourtData[0] | undefined = courtData[courtId];
 
     if (!courtToRelease) {
       console.warn("Court is not found to be released.");
       return;
     }
-
-    console.log(courtToRelease);
 
     // - Reset status
     //   - court status: "playing" -> "available"
@@ -193,12 +187,20 @@ function App() {
     courtToRelease.game = undefined;
     courtToRelease.gameId = undefined;
 
+    const availablePlayers = players.filter(
+      (player) =>
+        player.status === "available" &&
+        player.queueNumber.startsWith(
+          (games.length + 1).toString().padStart(3, "0"),
+        ),
+    );
+
     // - Set players' status to available
     courtToRelease.players.forEach((player, index) => {
       player.status = "available";
       player.queueNumber = generateQueueNumber({
-        gameIndex: games.length,
-        playerIndex: index,
+        gameIndex: games.length + 1,
+        playerIndex: availablePlayers.length + index,
       });
     });
 

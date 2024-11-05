@@ -69,11 +69,7 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
         ))}
       </ul>
 
-      <div
-        style={{
-          order: 1001,
-        }}
-      >
+      <div>
         <button
           onClick={startGame}
           disabled={selectedPlayers.length !== 4}

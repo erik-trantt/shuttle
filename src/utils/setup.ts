@@ -17,7 +17,24 @@ export const COURT_IDS: string[] = [
   "0af47be0-b0c9-4f7a-9980-798076d5dcf2",
 ];
 
-export const PLAYER_NAMES = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "L"];
+export const PLAYER_NAMES = [
+  "A",
+  "B",
+  "C",
+  "D",
+  "E",
+  "F",
+  "G",
+  "H",
+  "I",
+  "J",
+  "K",
+  "L",
+  "M",
+  "N",
+  "O",
+  "P",
+];
 
 export const buildInitialPlayers = (): Player[] => {
   return [...PLAYER_NAMES].map((name, index) => ({

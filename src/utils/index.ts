@@ -7,24 +7,33 @@
  * @returns
  */
 export function generateQueueNumber(options: {
-  gameIndex: number; // 1-3 characters
-  playerIndex: number; // 1-3 characters
+  gameIndex: number; // max 3 characters
+  playerIndex: number; // max 3 characters
 }): string {
   const { gameIndex, playerIndex } = options;
 
-  // 6-7 characters
+  if (gameIndex >= 1e3 || playerIndex >= 1e3) {
+    console.error(
+      "Unsupported number of games or players. Currently support only up to 999 games or players.",
+    );
+    return "";
+  }
+
+  // 4-5 characters
   const timeString = new Date()
     .toLocaleTimeString("en-AU", {
       hour: "2-digit",
       minute: "2-digit",
-      second: "2-digit",
+      // second: "2-digit",
       hour12: false,
     })
     .replace(/:/g, "");
 
-  // TODO: support for when the app is run between 2 consecutive days
+  const gameIndexString = gameIndex.toString().padStart(3, "0");
+  const playerIndexString = playerIndex.toString().padStart(3, "0");
 
-  return `${gameIndex}-${timeString}-${playerIndex}`;
+  // TODO: support for when the app is run between 2 consecutive days
+  return [gameIndexString, timeString, playerIndexString].join("-");
 }
 
 /**
@@ -42,7 +51,7 @@ export function generateQueueNumber(options: {
  * This function should return a string of `121804463`. When it is given to
  * `order` CSS property, it will be parsed into a number.
  */
-export function parseQueueNumberToOrder(queueNumber: string): string | number {
+export function parseQueueNumberToOrder(queueNumber: string): string {
   const orderParts = queueNumber.split("-");
   return orderParts.join("");
 }
