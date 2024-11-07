@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Dices, PlayCircle, UserPlus } from "lucide-react";
 import PlayerListItem from "./ListItem";
 import { Player } from "../../types";
@@ -43,8 +43,28 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
         Number(parseQueueNumberToOrder(playerA.queueNumber)) -
         Number(parseQueueNumberToOrder(playerB.queueNumber)),
     );
+
   const randomizeRangeStart =
     DOUBLE_GAME_PLAYER_NUMBER - DOUBLE_GAME_PLAYER_SUGGEST_SIZE;
+
+  /**
+   * Auto select available player(s) as lead players as soon as
+   * 1 or more are in or returned to the pool
+   */
+  useEffect(() => {
+    if (
+      !(
+        selectedPlayers.length === 0 &&
+        availablePlayers.length >= randomizeRangeStart
+      )
+    ) {
+      return;
+    }
+
+    for (let i = 0; i < randomizeRangeStart; i++) {
+      selectPlayer(availablePlayers[i]);
+    }
+  }, [selectedPlayers, availablePlayers, selectPlayer, randomizeRangeStart]);
 
   const randomizePlayers = () => {
     if (availablePlayers.length < DOUBLE_GAME_PLAYER_NUMBER) {
@@ -110,18 +130,15 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
           gridTemplateRows: "repeat(auto-fill, 2em)",
         }}
       >
-        {availablePlayers.map((player, playerIndex) => (
+        {availablePlayers.map((player) => (
           <PlayerListItem
             player={player}
             key={player.queueNumber}
             disabled={player.status === "unavailable"}
             selectPlayer={() => selectPlayer(player)}
-            selected={
-              playerIndex < randomizeRangeStart ||
-              selectedPlayers.some(
-                (selectedPlayer) => selectedPlayer.id === player.id,
-              )
-            }
+            selected={selectedPlayers.some(
+              (selectedPlayer) => selectedPlayer.id === player.id,
+            )}
           />
         ))}
       </ul>
@@ -129,9 +146,9 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
       <div className="flex flex-wrap gap-2 text-xs sm:text-base">
         <button
           onClick={startGame}
-          disabled={selectedPlayers.length !== 4}
+          disabled={selectedPlayers.length !== DOUBLE_GAME_PLAYER_NUMBER}
           className={`inline-flex w-full flex-1 touch-manipulation items-center justify-center rounded-md px-6 py-2 ${
-            selectedPlayers.length === 4
+            selectedPlayers.length === DOUBLE_GAME_PLAYER_NUMBER
               ? "bg-green-500 text-white hover:bg-green-600"
               : "cursor-not-allowed bg-gray-300 text-gray-500"
           }`}

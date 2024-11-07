@@ -6,7 +6,7 @@ import CourtDisplay from "./components/CourtDisplay";
 import { Court, CourtData, Game, Player } from "./types";
 import {
   COURT_IDS,
-  DOUBLE_GAME_PLAYER_SUGGEST_SIZE,
+  DOUBLE_GAME_PLAYER_NUMBER,
   buildInitialCourtData,
   buildInitialPlayers,
   generateQueueNumber,
@@ -108,7 +108,7 @@ function App() {
           (selectedPlayer) => selectedPlayer.id !== player.id,
         ),
       );
-    } else if (selectedPlayers.length < DOUBLE_GAME_PLAYER_SUGGEST_SIZE) {
+    } else if (selectedPlayers.length < DOUBLE_GAME_PLAYER_NUMBER) {
       // select
       setSelectedPlayers([...selectedPlayers, player]);
     }
