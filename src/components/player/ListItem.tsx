@@ -1,6 +1,6 @@
-import React, { ChangeEventHandler } from "react";
-import { Player } from "../../types";
-import { parseQueueNumberToOrder } from "../../utils";
+import React, { type ChangeEventHandler } from "react";
+import type { Player } from "@types";
+import { parseQueueNumberToOrder } from "@utils";
 
 export interface PlayerListItemProps {
   disabled: boolean;

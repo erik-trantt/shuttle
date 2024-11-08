@@ -1,12 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { Dices, PlayCircle, UserPlus } from "lucide-react";
 import PlayerListItem from "./ListItem";
-import { Player } from "../../types";
-import {
-  DOUBLE_GAME_PLAYER_NUMBER,
-  DOUBLE_GAME_PLAYER_SUGGEST_SIZE,
-  parseQueueNumberToOrder,
-} from "../../utils";
+import { useSettings } from "@hooks";
+import type { Player } from "@types";
+import { parseQueueNumberToOrder } from "@utils";
 
 interface PlayerPoolProps {
   players: Player[];
@@ -25,6 +22,8 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
   selectedPlayers,
   startGame,
 }) => {
+  const settings = useSettings();
+
   const [newPlayerName, setNewPlayerName] = useState("");
 
   const handleAddPlayer = (e: React.FormEvent) => {
@@ -45,7 +44,9 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
     );
 
   const randomizeRangeStart =
-    DOUBLE_GAME_PLAYER_NUMBER - DOUBLE_GAME_PLAYER_SUGGEST_SIZE;
+    settings.game.playerNumber - settings.game.suggestionSize;
+
+  const canStartGame = selectedPlayers.length === settings.game.playerNumber;
 
   /**
    * Auto select available player(s) as lead players as soon as
@@ -67,22 +68,22 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
   }, [selectedPlayers, availablePlayers, selectPlayer, randomizeRangeStart]);
 
   const randomizePlayers = () => {
-    if (availablePlayers.length < DOUBLE_GAME_PLAYER_NUMBER) {
+    if (availablePlayers.length < settings.game.playerNumber) {
       console.error(
-        "Not enough players to form a match. Please wait till there are at least DOUBLE_GAME_PLAYER_NUMBER available players.",
+        "Not enough players to form a match. Please wait till there are at least settings.game.playerNumber available players.",
       );
       return;
     }
 
     // Skip randomizing if the number of available players is equal to the expected number of players per game
-    if (availablePlayers.length === DOUBLE_GAME_PLAYER_NUMBER) {
+    if (availablePlayers.length === settings.game.playerNumber) {
       selectPlayers(availablePlayers);
       return;
     }
 
     const randomizedPlayerIndexes: number[] = [];
 
-    while (randomizedPlayerIndexes.length < DOUBLE_GAME_PLAYER_SUGGEST_SIZE) {
+    while (randomizedPlayerIndexes.length < settings.game.suggestionSize) {
       const randomizedIndex =
         Math.floor(
           Math.random() * (availablePlayers.length - randomizeRangeStart),
@@ -146,15 +147,15 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
       <div className="flex flex-wrap gap-2 text-xs sm:text-base">
         <button
           onClick={startGame}
-          disabled={selectedPlayers.length !== DOUBLE_GAME_PLAYER_NUMBER}
+          disabled={!canStartGame}
           className={`inline-flex w-full flex-1 touch-manipulation items-center justify-center rounded-md px-6 py-2 ${
-            selectedPlayers.length === DOUBLE_GAME_PLAYER_NUMBER
+            canStartGame
               ? "bg-green-500 text-white hover:bg-green-600"
               : "cursor-not-allowed bg-gray-300 text-gray-500"
           }`}
         >
           <PlayCircle size="1.5em" className="mr-2" />
-          <span className="whitespace-nowrap">Start Match</span>
+          <span className="whitespace-nowrap">Start Game</span>
         </button>
 
         <button

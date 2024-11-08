@@ -1,6 +1,6 @@
 import React from "react";
 import { X } from "lucide-react";
-import { CourtData } from "../types";
+import type { CourtData } from "@types";
 
 interface CourtDisplayProps {
   courtData: CourtData;

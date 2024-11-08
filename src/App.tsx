@@ -3,14 +3,14 @@ import { Users, LayoutGrid } from "lucide-react";
 import { v4 as uuid } from "uuid";
 import PlayerPool from "./components/player/Pool";
 import CourtDisplay from "./components/CourtDisplay";
-import { Court, CourtData, Game, Player } from "./types";
+import type { Court, CourtData, Game, Player } from "@types";
 import {
-  COURT_IDS,
-  DOUBLE_GAME_PLAYER_NUMBER,
   buildInitialCourtData,
   buildInitialPlayers,
   generateQueueNumber,
 } from "./utils";
+import { SettingsProvider } from "@contexts";
+import { useSettings } from "@hooks";
 
 // interface ShuttleApp {
 //   //
@@ -58,8 +58,10 @@ function App() {
 
   const [selectedPlayers, setSelectedPlayers] = useState<Player[]>([]);
   const [nextCourt, setNextCourt] = useState<Court>(
-    initialCourtData[COURT_IDS[0]].court,
+    Object.values(initialCourtData)[0].court,
   );
+
+  const settings = useSettings();
 
   const addPlayer = (name: string) => {
     const basePlayer: Player = {
@@ -108,7 +110,7 @@ function App() {
           (selectedPlayer) => selectedPlayer.id !== player.id,
         ),
       );
-    } else if (selectedPlayers.length < DOUBLE_GAME_PLAYER_NUMBER) {
+    } else if (selectedPlayers.length < settings.game?.playerNumber) {
       // select
       setSelectedPlayers([...selectedPlayers, player]);
     }
@@ -129,7 +131,7 @@ function App() {
 
     const selectedPlayerIds = selectedPlayers.map((player) => player.id);
 
-    const assignedCourt = nextCourt || courtData[COURT_IDS[0]].court;
+    const assignedCourt = nextCourt || Object.values(initialCourtData)[0].court;
     assignedCourt.status = "playing";
 
     const newGame: Game = {
@@ -239,14 +241,16 @@ function App() {
             <Users size="1em" className="mr-2" /> Player Pool
           </h2>
 
-          <PlayerPool
-            players={players}
-            addPlayer={addPlayer}
-            selectPlayer={selectPlayer}
-            selectPlayers={selectPlayers}
-            selectedPlayers={selectedPlayers}
-            startGame={startGame}
-          />
+          <SettingsProvider>
+            <PlayerPool
+              players={players}
+              addPlayer={addPlayer}
+              selectPlayer={selectPlayer}
+              selectPlayers={selectPlayers}
+              selectedPlayers={selectedPlayers}
+              startGame={startGame}
+            />
+          </SettingsProvider>
         </section>
 
         <section className="rounded-lg bg-white p-6 shadow-md">
