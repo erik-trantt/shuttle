@@ -1,4 +1,4 @@
 import { useContext } from "react";
-import { SettingsContext } from "@contexts";
+import { ConfigContext } from "@contexts";
 
-export const useSettings = () => useContext(SettingsContext);
+export const useRuntimeConfig = () => useContext(ConfigContext);

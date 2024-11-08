@@ -3,14 +3,14 @@ import { Users, LayoutGrid } from "lucide-react";
 import { v4 as uuid } from "uuid";
 import PlayerPool from "./components/player/Pool";
 import CourtDisplay from "./components/CourtDisplay";
-import type { Court, CourtData, Game, Player } from "@types";
+import { ConfigProvider } from "@contexts";
+import { useRuntimeConfig } from "@hooks";
 import {
   buildInitialCourtData,
   buildInitialPlayers,
   generateQueueNumber,
-} from "./utils";
-import { SettingsProvider } from "@contexts";
-import { useSettings } from "@hooks";
+} from "@utils";
+import type { Court, CourtData, Game, Player } from "@types";
 
 // interface ShuttleApp {
 //   //
@@ -61,7 +61,7 @@ function App() {
     Object.values(initialCourtData)[0].court,
   );
 
-  const settings = useSettings();
+  const config = useRuntimeConfig();
 
   const addPlayer = (name: string) => {
     const basePlayer: Player = {
@@ -110,7 +110,7 @@ function App() {
           (selectedPlayer) => selectedPlayer.id !== player.id,
         ),
       );
-    } else if (selectedPlayers.length < settings.game?.playerNumber) {
+    } else if (selectedPlayers.length < config.game.settings.playerNumber) {
       // select
       setSelectedPlayers([...selectedPlayers, player]);
     }
@@ -241,7 +241,7 @@ function App() {
             <Users size="1em" className="mr-2" /> Player Pool
           </h2>
 
-          <SettingsProvider>
+          <ConfigProvider>
             <PlayerPool
               players={players}
               addPlayer={addPlayer}
@@ -250,7 +250,7 @@ function App() {
               selectedPlayers={selectedPlayers}
               startGame={startGame}
             />
-          </SettingsProvider>
+          </ConfigProvider>
         </section>
 
         <section className="rounded-lg bg-white p-6 shadow-md">

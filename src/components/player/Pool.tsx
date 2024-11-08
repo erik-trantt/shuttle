@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Dices, PlayCircle, UserPlus } from "lucide-react";
 import PlayerListItem from "./ListItem";
-import { useSettings } from "@hooks";
+import { useRuntimeConfig } from "@hooks";
 import type { Player } from "@types";
 import { parseQueueNumberToOrder } from "@utils";
 
@@ -22,7 +22,7 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
   selectedPlayers,
   startGame,
 }) => {
-  const settings = useSettings();
+  const config = useRuntimeConfig();
 
   const [newPlayerName, setNewPlayerName] = useState("");
 
@@ -44,9 +44,10 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
     );
 
   const randomizeRangeStart =
-    settings.game.playerNumber - settings.game.suggestionSize;
+    config.game.settings.playerNumber - config.game.settings.suggestionSize;
 
-  const canStartGame = selectedPlayers.length === settings.game.playerNumber;
+  const canStartGame =
+    selectedPlayers.length === config.game.settings.playerNumber;
 
   /**
    * Auto select available player(s) as lead players as soon as
@@ -68,22 +69,24 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
   }, [selectedPlayers, availablePlayers, selectPlayer, randomizeRangeStart]);
 
   const randomizePlayers = () => {
-    if (availablePlayers.length < settings.game.playerNumber) {
+    if (availablePlayers.length < config.game.settings.playerNumber) {
       console.error(
-        "Not enough players to form a match. Please wait till there are at least settings.game.playerNumber available players.",
+        `Not enough players to form a match. Please wait till there are at least ${config.game.settings.playerNumber} available players.`,
       );
       return;
     }
 
     // Skip randomizing if the number of available players is equal to the expected number of players per game
-    if (availablePlayers.length === settings.game.playerNumber) {
+    if (availablePlayers.length === config.game.settings.playerNumber) {
       selectPlayers(availablePlayers);
       return;
     }
 
     const randomizedPlayerIndexes: number[] = [];
 
-    while (randomizedPlayerIndexes.length < settings.game.suggestionSize) {
+    while (
+      randomizedPlayerIndexes.length < config.game.settings.suggestionSize
+    ) {
       const randomizedIndex =
         Math.floor(
           Math.random() * (availablePlayers.length - randomizeRangeStart),

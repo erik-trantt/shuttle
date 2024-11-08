@@ -1,3 +1,3 @@
-import { SettingsContext, SettingsProvider } from "./settings.context";
+import { ConfigContext, ConfigProvider } from "./config.context";
 
-export { SettingsContext, SettingsProvider };
+export { ConfigContext, ConfigProvider };
