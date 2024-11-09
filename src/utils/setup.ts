@@ -19,7 +19,7 @@ export const COURT_IDS: string[] = [
 ];
 
 export const PLAYER_NAMES = faker.helpers.multiple(
-  () => faker.person.fullName(),
+  () => `${faker.person.firstName()} ${faker.person.lastName()}`,
   {
     count: 21,
   },
