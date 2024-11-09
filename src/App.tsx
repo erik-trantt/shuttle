@@ -236,7 +236,7 @@ function App() {
       </header>
 
       <div className="mx-auto max-w-6xl space-y-4">
-        <section className="rounded-lg bg-white p-6 shadow-md">
+        <section className="rounded-lg bg-white p-4 shadow-md lg:p-6">
           <h2 className="mb-4 flex items-center text-sm font-semibold sm:text-xl">
             <Users size="1em" className="mr-2" /> Player Pool
           </h2>
@@ -253,9 +253,9 @@ function App() {
           </ConfigProvider>
         </section>
 
-        <section className="rounded-lg bg-white p-6 shadow-md">
+        <section className="rounded-lg bg-white p-4 shadow-md lg:p-6">
           <h2 className="mb-4 flex items-center text-sm font-semibold sm:text-xl">
-            <LayoutGrid size="1em" className="mr-2" /> Courts {games.length}
+            <LayoutGrid size="1em" className="mr-2" /> Courts
           </h2>
 
           <CourtDisplay courtData={courtData} releaseCourt={releaseCourt} />

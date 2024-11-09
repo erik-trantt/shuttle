@@ -35,7 +35,7 @@ const PlayerListItem: React.FC<PlayerListItemProps> = ({
       <label
         htmlFor={`player-${player.id}`}
         className={[
-          "flex-grow cursor-pointer",
+          "max-w-full flex-grow cursor-pointer truncate",
           "rounded-md px-2 py-1.5 text-sm",
           selected ? "bg-blue-100" : "bg-gray-100 hover:bg-gray-200",
           disabled ? "pointer-events-none opacity-25" : "",

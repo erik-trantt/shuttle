@@ -4,6 +4,7 @@ import PlayerListItem from "./ListItem";
 import { useRuntimeConfig } from "@hooks";
 import type { Player } from "@types";
 import { parseQueueNumberToOrder } from "@utils";
+import styles from "./pool.module.css";
 
 interface PlayerPoolProps {
   players: Player[];
@@ -108,7 +109,9 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
   };
 
   return (
-    <div>
+    <div
+      className={`[--sa-list-item-width:_50%] sm:[--sa-list-item-width:_25%]`}
+    >
       <form onSubmit={handleAddPlayer} className="mb-4 flex">
         <input
           type="text"
@@ -128,10 +131,15 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
       </form>
 
       <ul
-        className="mb-4 grid h-[20vh] gap-x-2 gap-y-2 overflow-y-auto"
+        className={[
+          styles.ScrollShadows,
+          "mb-4 max-h-[20vh] overflow-y-auto",
+          "grid gap-x-2 gap-y-2",
+        ].join(" ")}
         style={{
-          gridTemplateColumns: "repeat(auto-fill, minmax(125px, 1fr))",
-          gridTemplateRows: "repeat(auto-fill, 2em)",
+          gridTemplateColumns:
+            "repeat(auto-fill, minmax(calc(var(--sa-list-item-width, 50%) - 0.5rem), 1fr))",
+          gridAutoRows: "minmax(min-content, 2em)",
         }}
       >
         {availablePlayers.map((player) => (
@@ -147,7 +155,30 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
         ))}
       </ul>
 
-      <div className="flex flex-wrap gap-2 text-xs sm:text-base">
+      <div className="flex flex-wrap gap-x-2 gap-y-4 text-xs sm:text-base">
+        <div className="max-w-full basis-full">
+          <h3 className="mb-1 font-semibold">Confirming selection</h3>
+
+          <ol
+            className={[
+              "rounded",
+              "list-inside list-decimal",
+              "grid grid-rows-2 gap-x-2 gap-y-1 sm:grid-rows-1 sm:gap-2",
+              canStartGame ? "bg-green-200" : undefined,
+            ].join(" ")}
+            style={{
+              gridTemplateColumns:
+                "repeat(auto-fill, minmax(calc(var(--sa-list-item-width, 50%) - 0.5rem), 1fr))",
+            }}
+          >
+            {selectedPlayers.map((player) => (
+              <li key={player.id} className="truncate px-2 text-sm">
+                {player.name}
+              </li>
+            ))}
+          </ol>
+        </div>
+
         <button
           onClick={startGame}
           disabled={!canStartGame}
