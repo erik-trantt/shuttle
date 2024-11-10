@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Dices, PlayCircle, UserPlus } from "lucide-react";
 import PlayerListItem from "./ListItem";
 import { useRuntimeConfig } from "@hooks";
@@ -44,31 +44,59 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
         Number(parseQueueNumberToOrder(playerB.queueNumber)),
     );
 
-  const randomizeRangeStart =
-    config.game.settings.playerNumber - config.game.settings.suggestionSize;
-
+  const oldAutoSuggestionSize = useRef(config.game.getAutoSelectionSize());
+  const autoSelectionSize = config.game.getAutoSelectionSize();
   const canStartGame =
     selectedPlayers.length === config.game.settings.playerNumber;
+  const canAutoSuggest = availablePlayers.length >= autoSelectionSize;
+
+  const autoSuggestPlayers = useCallback(
+    (suggestionSize: number): void => {
+      const toBeSelectedPlayers = Array.from(Array(suggestionSize).keys()).map(
+        (i) => availablePlayers[i],
+      );
+
+      selectPlayers(toBeSelectedPlayers);
+    },
+    [availablePlayers, selectPlayers],
+  );
 
   /**
    * Auto select available player(s) as lead players as soon as
    * 1 or more are in or returned to the pool
    */
   useEffect(() => {
-    if (
-      !(
-        selectedPlayers.length === 0 &&
-        availablePlayers.length >= randomizeRangeStart
-      )
-    ) {
+    if (!(selectedPlayers.length === 0 && canAutoSuggest)) {
       return;
     }
 
-    for (let i = 0; i < randomizeRangeStart; i++) {
-      selectPlayer(availablePlayers[i]);
-    }
-  }, [selectedPlayers, availablePlayers, selectPlayer, randomizeRangeStart]);
+    autoSuggestPlayers(autoSelectionSize);
+  }, [autoSelectionSize, canAutoSuggest, selectedPlayers, autoSuggestPlayers]);
 
+  useEffect(() => {
+    if (oldAutoSuggestionSize.current === autoSelectionSize) {
+      return;
+    }
+
+    oldAutoSuggestionSize.current = autoSelectionSize;
+
+    if (canAutoSuggest) {
+      autoSuggestPlayers(autoSelectionSize);
+    } else {
+      selectPlayers([]);
+    }
+  }, [
+    autoSelectionSize,
+    canAutoSuggest,
+    selectedPlayers,
+    oldAutoSuggestionSize,
+    autoSuggestPlayers,
+    selectPlayers,
+  ]);
+
+  /**
+   * Suggestion
+   */
   const randomizePlayers = () => {
     if (availablePlayers.length < config.game.settings.playerNumber) {
       console.error(
@@ -90,8 +118,8 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
     ) {
       const randomizedIndex =
         Math.floor(
-          Math.random() * (availablePlayers.length - randomizeRangeStart),
-        ) + randomizeRangeStart;
+          Math.random() * (availablePlayers.length - autoSelectionSize),
+        ) + autoSelectionSize;
 
       if (!randomizedPlayerIndexes.includes(randomizedIndex)) {
         randomizedPlayerIndexes.push(randomizedIndex);
@@ -99,7 +127,7 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
     }
 
     selectPlayers([
-      ...Array.from(Array(randomizeRangeStart).keys()).map(
+      ...Array.from(Array(autoSelectionSize).keys()).map(
         (startPlayerIndex) => availablePlayers[startPlayerIndex],
       ),
       ...randomizedPlayerIndexes.map(
@@ -164,18 +192,22 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
               "rounded",
               "list-inside list-decimal",
               "grid grid-rows-2 gap-x-2 gap-y-1 sm:grid-rows-1 sm:gap-2",
-              canStartGame ? "bg-green-200" : undefined,
             ].join(" ")}
             style={{
               gridTemplateColumns:
                 "repeat(auto-fill, minmax(calc(var(--sa-list-item-width, 50%) - 0.5rem), 1fr))",
             }}
           >
-            {selectedPlayers.map((player) => (
-              <li key={player.id} className="truncate px-2 text-sm">
-                {player.name}
-              </li>
-            ))}
+            {Array.from(Array(config.game.settings.playerNumber).keys()).map(
+              (i) => (
+                <li
+                  key={selectedPlayers[i]?.id || i}
+                  className="truncate px-2 text-sm"
+                >
+                  {selectedPlayers[i]?.name || ""}
+                </li>
+              ),
+            )}
           </ol>
         </div>
 
@@ -188,7 +220,7 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
               : "cursor-not-allowed bg-gray-300 text-gray-500"
           }`}
         >
-          <PlayCircle size="1.5em" className="mr-2" />
+          <PlayCircle size="1.5em" className="mr-2 flex-shrink-0" />
           <span className="whitespace-nowrap">Start Game</span>
         </button>
 
@@ -197,8 +229,8 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
           onClick={randomizePlayers}
           className={`inline-flex w-full flex-1 touch-manipulation items-center justify-center rounded-md px-6 py-2 active:bg-gray-100`}
         >
-          <Dices size="1.5em" className="mr-2" />
-          Suggest
+          <Dices size="1.5em" className="mr-2 flex-shrink-0" />
+          Suggest {config.game.settings.suggestionSize}
         </button>
       </div>
     </div>
