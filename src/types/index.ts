@@ -8,7 +8,7 @@ export interface Court {
 export interface Player {
   id: string;
   name: string;
-  index?: number;
+  index: number;
   queueNumber: string;
   status: "available" | "unavailable";
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Users, LayoutGrid } from "lucide-react";
 import { v4 as uuid } from "uuid";
 import PlayerPool from "./components/player/Pool";
@@ -52,17 +52,19 @@ if (typeof window !== "undefined") {
 }
 
 function App() {
-  const [courtData, _setCourtData] = useState<CourtData>(initialCourtData);
+  const [courtData, setCourtData] = useState<CourtData>(initialCourtData);
   const [games, setGames] = useState<Game[]>([]);
   const [players, setPlayers] = useState<Player[]>(initialPlayers);
 
   const [selectedPlayers, setSelectedPlayers] = useState<Player[]>([]);
-  const [nextCourt, setNextCourt] = useState<Court>(
-    Object.values(initialCourtData)[0].court,
-  );
+  const [nextCourt, setNextCourt] = useState<Court | null>(null);
 
   const config = useRuntimeConfig();
 
+  /**
+   * Add new player to pool.
+   * TODO: describe
+   */
   const addPlayer = (name: string) => {
     const basePlayer: Player = {
       id: uuid(),
@@ -124,6 +126,10 @@ function App() {
     }
   };
 
+  /**
+   * Select multiple players.
+   * TODO: describe
+   */
   const selectPlayers = (players: Player[]) => {
     setSelectedPlayers(players);
   };
@@ -135,16 +141,23 @@ function App() {
   const startGame = () => {
     if (selectedPlayers.length !== 4) {
       console.log("Not enough player. Do nothing");
+
+      return;
+    }
+
+    if (!nextCourt) {
+      console.error(
+        "No available court to start game! Please try again later.",
+      );
+
+      return;
     }
 
     const selectedPlayerIds = selectedPlayers.map((player) => player.id);
 
-    const assignedCourt = nextCourt || Object.values(initialCourtData)[0].court;
-    assignedCourt.status = "playing";
-
     const newGame: Game = {
       id: uuid(),
-      courtId: assignedCourt.id,
+      courtId: nextCourt.id,
       firstParty: {
         playerIds: selectedPlayerIds.slice(0, 1),
         score: 0,
@@ -157,28 +170,39 @@ function App() {
       timestamp: Date.now(),
     };
 
-    courtData[assignedCourt.id] = {
-      court: assignedCourt,
-      gameId: newGame.id,
-      game: newGame,
-      players: selectedPlayers,
-    };
+    // Cloning data to update
+    const playersToStartGame = [...selectedPlayers];
+    const updatedPlayers = [...players];
 
-    setGames([...games, newGame]);
+    playersToStartGame.forEach(({ index: playerIndex }) => {
+      const foundPlayer = updatedPlayers[playerIndex];
 
-    selectedPlayers.forEach((player) => {
-      player.status = "unavailable";
+      if (!foundPlayer) {
+        return;
+      }
+
+      foundPlayer.status = "unavailable";
     });
 
+    setPlayers(updatedPlayers);
+
+    const courtToStartGame: CourtData = {
+      [nextCourt.id]: {
+        court: { ...nextCourt, status: "playing" },
+        gameId: newGame.id,
+        game: newGame,
+        players: playersToStartGame,
+      },
+    };
+    setCourtData((oldCourtData) => ({
+      ...oldCourtData,
+      ...courtToStartGame,
+    }));
+
+    setGames((oldGames) => [...oldGames, newGame]);
+
+    // Reset selected players.
     setSelectedPlayers([]);
-
-    const nextAvailableCourtData = Object.values(courtData).find(
-      ({ court }) => court.status === "available",
-    );
-
-    if (nextAvailableCourtData) {
-      setNextCourt(nextAvailableCourtData.court);
-    }
   };
 
   /**
@@ -186,21 +210,13 @@ function App() {
    * TODO: Describe.
    */
   const releaseCourt = (courtId: string) => {
-    const courtToRelease: CourtData[0] | undefined = courtData[courtId];
+    const foundCourtData: CourtData[0] | undefined = courtData[courtId];
 
-    if (!courtToRelease) {
+    if (!foundCourtData) {
       console.warn("Court is not found to be released.");
+
       return;
     }
-
-    // - Reset status
-    //   - court status: "playing" -> "available"
-    //   - players status: "unavailable" -> "available"
-    courtToRelease.court.status = "available";
-
-    // - Delete game + gameId
-    courtToRelease.game = undefined;
-    courtToRelease.gameId = undefined;
 
     const availablePlayers = players.filter(
       (player) =>
@@ -210,30 +226,58 @@ function App() {
         ),
     );
 
-    // - Set players' status to available
-    courtToRelease.players.forEach((player, index) => {
-      player.status = "available";
-      player.queueNumber = generateQueueNumber({
+    // Cloning data to update
+    const playersToRelease = [...foundCourtData.players];
+    const updatedPlayers = [...players];
+
+    playersToRelease.forEach(({ index: playerIndex }, playerToReleaseIndex) => {
+      const foundPlayer = updatedPlayers[playerIndex];
+
+      if (!foundPlayer) {
+        return;
+      }
+
+      foundPlayer.status = "available";
+      foundPlayer.queueNumber = generateQueueNumber({
         gameIndex: games.length + 1,
-        playerIndex: availablePlayers.length + index,
+        playerIndex: availablePlayers.length + playerToReleaseIndex,
       });
     });
 
-    // - Set players to empty array
-    courtToRelease.players = [];
+    setPlayers(updatedPlayers);
 
-    const nextAvailableCourtData = Object.values(courtData).find(
-      ({ court }) => court.status === "available",
-    );
-
-    if (
-      nextAvailableCourtData &&
-      nextCourt &&
-      nextAvailableCourtData.court.index <= nextCourt.index
-    ) {
-      setNextCourt({ ...nextAvailableCourtData.court });
-    }
+    // Reset court.
+    const courtToRelease: CourtData = {
+      [foundCourtData.court.id]: {
+        court: { ...foundCourtData.court, status: "available" },
+        gameId: undefined,
+        game: undefined,
+        players: [],
+      },
+    };
+    setCourtData((oldCourtData) => ({
+      ...oldCourtData,
+      ...courtToRelease,
+    }));
   };
+
+  /**
+   * TODO: describe
+   */
+  useEffect(() => {
+    const nextAvailableCourtsData = Object.values(courtData)
+      .filter(({ court }) => court.status === "available")
+      .sort(
+        (courtDataA, courtDataB) =>
+          courtDataA.court.index - courtDataB.court.index,
+      );
+
+    if (!nextAvailableCourtsData.length) {
+      setNextCourt(null);
+    } else {
+      setNextCourt({ ...nextAvailableCourtsData[0].court });
+    }
+  }, [courtData, games]);
 
   return (
     <div className="min-h-screen bg-gray-100 px-8 py-4">
