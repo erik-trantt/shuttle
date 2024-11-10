@@ -9,6 +9,7 @@ import styles from "./pool.module.css";
 interface PlayerPoolProps {
   players: Player[];
   addPlayer: (name: string) => void;
+  nextCourtAvailable: boolean;
   selectPlayer: (player: Player) => void;
   selectPlayers: (players: Player[]) => void;
   selectedPlayers: Player[];
@@ -18,6 +19,7 @@ interface PlayerPoolProps {
 const PlayerPool: React.FC<PlayerPoolProps> = ({
   players,
   addPlayer,
+  nextCourtAvailable,
   selectPlayer,
   selectPlayers,
   selectedPlayers,
@@ -47,7 +49,8 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
   const oldAutoSelectionSize = useRef(config.game.getAutoSelectionSize());
   const autoSelectionSize = config.game.getAutoSelectionSize();
   const canStartGame =
-    selectedPlayers.length === config.game.settings.playerNumber;
+    selectedPlayers.length === config.game.settings.playerNumber &&
+    nextCourtAvailable;
   const canAutoSelect = availablePlayers.length >= autoSelectionSize;
 
   const autoSelectPlayers = useCallback(

@@ -297,6 +297,7 @@ function App() {
             <PlayerPool
               players={players}
               addPlayer={addPlayer}
+              nextCourtAvailable={nextCourt !== null}
               selectPlayer={selectPlayer}
               selectPlayers={selectPlayers}
               selectedPlayers={selectedPlayers}
