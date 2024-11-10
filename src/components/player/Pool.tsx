@@ -133,13 +133,13 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
       <ul
         className={[
           styles.ScrollShadows,
-          "mb-4 max-h-[20vh] overflow-y-auto",
+          "mb-4 max-h-[20vh] overflow-y-auto overscroll-contain",
           "grid gap-x-2 gap-y-2",
         ].join(" ")}
         style={{
           gridTemplateColumns:
             "repeat(auto-fill, minmax(calc(var(--sa-list-item-width, 50%) - 0.5rem), 1fr))",
-          gridAutoRows: "minmax(min-content, 2em)",
+          gridTemplateRows: "repeat(auto-fill, 2rem)",
         }}
       >
         {availablePlayers.map((player) => (
