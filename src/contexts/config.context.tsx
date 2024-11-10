@@ -23,7 +23,11 @@ export const ConfigContext = createContext<ConfigContext>({
   game: {
     settings: buildGameSettings(DEFAULT_GAME_FORMAT),
     setSettings: () => {},
-    getAutoSelectionSize: () => 0,
+    getAutoSelectionSize: () => {
+      const gameSettings = buildGameSettings(DEFAULT_GAME_FORMAT);
+
+      return gameSettings.playerNumber - gameSettings.suggestionSize;
+    },
   },
   setGameFormat: () => {},
   setSuggestionSize: () => {},

@@ -100,7 +100,7 @@ function App() {
    */
   const selectPlayer = (player: Player) => {
     const isAutoSelected = selectedPlayers
-      .slice(config.game.getAutoSelectionSize())
+      .slice(0, config.game.getAutoSelectionSize())
       .some((selectedPlayer) => selectedPlayer.id === player.id);
 
     if (isAutoSelected) {
