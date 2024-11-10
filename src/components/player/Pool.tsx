@@ -44,13 +44,13 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
         Number(parseQueueNumberToOrder(playerB.queueNumber)),
     );
 
-  const oldAutoSuggestionSize = useRef(config.game.getAutoSelectionSize());
+  const oldAutoSelectionSize = useRef(config.game.getAutoSelectionSize());
   const autoSelectionSize = config.game.getAutoSelectionSize();
   const canStartGame =
     selectedPlayers.length === config.game.settings.playerNumber;
-  const canAutoSuggest = availablePlayers.length >= autoSelectionSize;
+  const canAutoSelect = availablePlayers.length >= autoSelectionSize;
 
-  const autoSuggestPlayers = useCallback(
+  const autoSelectPlayers = useCallback(
     (suggestionSize: number): void => {
       const toBeSelectedPlayers = Array.from(Array(suggestionSize).keys()).map(
         (i) => availablePlayers[i],
@@ -66,38 +66,38 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
    * 1 or more are in or returned to the pool
    */
   useEffect(() => {
-    if (!(selectedPlayers.length === 0 && canAutoSuggest)) {
+    if (!(selectedPlayers.length === 0 && canAutoSelect)) {
       return;
     }
 
-    autoSuggestPlayers(autoSelectionSize);
-  }, [autoSelectionSize, canAutoSuggest, selectedPlayers, autoSuggestPlayers]);
+    autoSelectPlayers(autoSelectionSize);
+  }, [autoSelectionSize, canAutoSelect, selectedPlayers, autoSelectPlayers]);
 
   useEffect(() => {
-    if (oldAutoSuggestionSize.current === autoSelectionSize) {
+    if (oldAutoSelectionSize.current === autoSelectionSize) {
       return;
     }
 
-    oldAutoSuggestionSize.current = autoSelectionSize;
+    oldAutoSelectionSize.current = autoSelectionSize;
 
-    if (canAutoSuggest) {
-      autoSuggestPlayers(autoSelectionSize);
+    if (canAutoSelect) {
+      autoSelectPlayers(autoSelectionSize);
     } else {
       selectPlayers([]);
     }
   }, [
     autoSelectionSize,
-    canAutoSuggest,
+    canAutoSelect,
     selectedPlayers,
-    oldAutoSuggestionSize,
-    autoSuggestPlayers,
+    oldAutoSelectionSize,
+    autoSelectPlayers,
     selectPlayers,
   ]);
 
   /**
    * Suggestion
    */
-  const randomizePlayers = () => {
+  const suggestPlayers = () => {
     if (availablePlayers.length < config.game.settings.playerNumber) {
       console.error(
         `Not enough players to form a match. Please wait till there are at least ${config.game.settings.playerNumber} available players.`,
@@ -226,7 +226,7 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
 
         <button
           type="button"
-          onClick={randomizePlayers}
+          onClick={suggestPlayers}
           className={`inline-flex w-full flex-1 touch-manipulation items-center justify-center rounded-md px-6 py-2 active:bg-gray-100`}
         >
           <Dices size="1.5em" className="mr-2 flex-shrink-0" />
