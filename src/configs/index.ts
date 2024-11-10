@@ -3,7 +3,7 @@ export enum GAME_FORMATS {
   SINGLE = "single",
 }
 
-type GameFormatType = keyof typeof GAME_FORMATS;
+export type GameFormatType = keyof typeof GAME_FORMATS;
 
 interface BaseGameSettings {
   playerNumber: number;
