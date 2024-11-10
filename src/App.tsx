@@ -99,11 +99,19 @@ function App() {
    * TODO: describe
    */
   const selectPlayer = (player: Player) => {
-    const selected = selectedPlayers.some(
-      (selectPlayer) => selectPlayer.id === player.id,
+    const isAutoSelected = selectedPlayers
+      .slice(config.game.getAutoSelectionSize())
+      .some((selectedPlayer) => selectedPlayer.id === player.id);
+
+    if (isAutoSelected) {
+      return;
+    }
+
+    const isSelected = selectedPlayers.some(
+      (selectedPlayer) => selectedPlayer.id === player.id,
     );
 
-    if (selected) {
+    if (isSelected) {
       // unselect
       setSelectedPlayers(
         selectedPlayers.filter(
