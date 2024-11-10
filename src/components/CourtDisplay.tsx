@@ -21,24 +21,22 @@ const CourtDisplay: React.FC<CourtDisplayProps> = ({
           <div className="flex w-full items-center justify-between bg-gray-100 px-2">
             <h3 className="text-sm font-semibold">{data.court.name}</h3>
 
-            {data.gameId && (
-              <button
-                onClick={() => releaseCourt(data.court.id)}
-                className="text-red-500 hover:text-red-700 focus:outline-none"
-                title={`Finish ${data.court.name}`}
-              >
-                <X size={20} />
-              </button>
-            )}
+            <button
+              title={`Finish ${data.court.name}`}
+              className="focus:outline-none enabled:text-red-500 enabled:hover:text-red-700 disabled:text-gray-500"
+              disabled={!data.gameId}
+              onClick={() => releaseCourt(data.court.id)}
+            >
+              <X size={"1rem"} />
+            </button>
           </div>
 
           <ul className="h-24 max-w-full px-4 py-2 text-sm">
-            {data.game &&
-              data.players.map((player, index) => (
-                <li key={index} className="truncate">
-                  {player.name}
-                </li>
-              ))}
+            {data.players.map((player) => (
+              <li key={player.id} className="truncate">
+                {player.name}
+              </li>
+            ))}
           </ul>
         </div>
       ))}
