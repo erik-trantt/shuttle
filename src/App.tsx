@@ -86,9 +86,9 @@ function App() {
     );
 
     if (!foundPlayer) {
-      basePlayer.index = players.length - 1;
+      basePlayer.index = players.length;
       basePlayer.queueNumber = generateQueueNumber({
-        gameIndex: games.length,
+        gameIndex: games.length + 1,
         playerIndex: players.length,
       });
 

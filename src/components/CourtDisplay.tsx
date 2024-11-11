@@ -27,7 +27,7 @@ const CourtDisplay: React.FC<CourtDisplayProps> = ({
               disabled={!data.gameId}
               onClick={() => releaseCourt(data.court.id)}
             >
-              <X size={"1rem"} />
+              <X size="1em" />
             </button>
           </div>
 
