@@ -12,41 +12,10 @@ import {
 } from "@utils";
 import type { Court, CourtData, Game, Player } from "@types";
 
-// interface ShuttleApp {
-//   //
-//   playerContext?: {
-//     players: Player[];
-//     addPlayer: (name: string) => void;
-//   };
-
-//   //
-//   gameContext?: {
-//     games: Game[];
-//     createGame: (game: Omit<Game, "id">) => Game;
-//   };
-
-//   //
-//   matchContext?: {
-//     matches: Match[];
-//     createMatch: (court: Court) => Match;
-//   };
-
-//   //
-//   courtContext?: {
-//     courts: CourtData;
-//     availableCourtId: number;
-//   };
-// }
-
-// export const ShuttleAppContext = React.createContext<ShuttleApp | null>(null);
-
 let initialPlayers: Player[] = [];
 let initialCourtData: CourtData = {};
 
-// https://react.dev/learn/you-might-not-need-an-effect#initializing-the-application
-// Initialize data only when running on the browser
 if (typeof window !== "undefined") {
-  // Only runs once per app load
   initialPlayers = buildInitialPlayers();
   initialCourtData = buildInitialCourtData();
 }
@@ -55,16 +24,19 @@ function App() {
   const [courtData, setCourtData] = useState<CourtData>(initialCourtData);
   const [games, setGames] = useState<Game[]>([]);
   const [players, setPlayers] = useState<Player[]>(initialPlayers);
+  const [gameQueue, setGameQueue] = useState<Game[]>([]);
+  const [queuedGamePlayers, setQueuedGamePlayers] = useState<
+    {
+      gameId: string;
+      players: { id: string; name: string }[];
+    }[]
+  >([]);
 
   const [selectedPlayers, setSelectedPlayers] = useState<Player[]>([]);
   const [nextCourt, setNextCourt] = useState<Court | null>(null);
 
   const config = useRuntimeConfig();
 
-  /**
-   * Add new player to pool.
-   * TODO: describe
-   */
   const addPlayer = (name: string) => {
     const basePlayer: Player = {
       id: uuid(),
@@ -96,10 +68,6 @@ function App() {
     }
   };
 
-  /**
-   * Select player.
-   * TODO: describe
-   */
   const selectPlayer = (player: Player) => {
     const isAutoSelected = selectedPlayers
       .slice(0, config.game.getAutoSelectionSize())
@@ -114,107 +82,114 @@ function App() {
     );
 
     if (isSelected) {
-      // unselect
       setSelectedPlayers(
         selectedPlayers.filter(
           (selectedPlayer) => selectedPlayer.id !== player.id,
         ),
       );
     } else if (selectedPlayers.length < config.game.settings.playerNumber) {
-      // select
       setSelectedPlayers([...selectedPlayers, player]);
     }
   };
 
-  /**
-   * Select multiple players.
-   * TODO: describe
-   */
   const selectPlayers = (players: Player[]) => {
     setSelectedPlayers(players);
   };
 
-  /**
-   * Start game.
-   * TODO: describe
-   */
+  const assignGameToCourt = (
+    game: Game,
+    court: Court,
+    gamePlayers: Player[],
+  ) => {
+    const updatedGame = { ...game, courtId: court.id };
+    const courtToStartGame: CourtData = {
+      [court.id]: {
+        court: { ...court, status: "playing" },
+        gameId: updatedGame.id,
+        game: updatedGame,
+        players: gamePlayers,
+      },
+    };
+
+    setCourtData((oldCourtData) => ({
+      ...oldCourtData,
+      ...courtToStartGame,
+    }));
+
+    setGames((oldGames) => [...oldGames, updatedGame]);
+
+    // Remove from queued players if it was a queued game
+    setQueuedGamePlayers((current) =>
+      current.filter((qgp) => qgp.gameId !== game.id),
+    );
+
+    return updatedGame;
+  };
+
   const startGame = () => {
     if (selectedPlayers.length !== 4) {
       console.log("Not enough player. Do nothing");
-
-      return;
-    }
-
-    if (!nextCourt) {
-      console.error(
-        "No available court to start game! Please try again later.",
-      );
-
       return;
     }
 
     const selectedPlayerIds = selectedPlayers.map((player) => player.id);
-
     const newGame: Game = {
       id: uuid(),
-      courtId: nextCourt.id,
+      courtId: nextCourt?.id || "",
       firstParty: {
-        playerIds: selectedPlayerIds.slice(0, 1),
+        playerIds: selectedPlayerIds.slice(0, 2),
         score: 0,
       },
       secondParty: {
-        playerIds: selectedPlayerIds.slice(2, 3),
+        playerIds: selectedPlayerIds.slice(2, 4),
         score: 0,
       },
       index: games.length + 1,
       timestamp: Date.now(),
     };
 
-    // Cloning data to update
+    // Update players' status
     const playersToStartGame = [...selectedPlayers];
     const updatedPlayers = [...players];
 
     playersToStartGame.forEach(({ index: playerIndex }) => {
       const foundPlayer = updatedPlayers[playerIndex];
-
-      if (!foundPlayer) {
-        return;
-      }
-
+      if (!foundPlayer) return;
       foundPlayer.status = "unavailable";
     });
 
     setPlayers(updatedPlayers);
 
-    const courtToStartGame: CourtData = {
-      [nextCourt.id]: {
-        court: { ...nextCourt, status: "playing" },
-        gameId: newGame.id,
-        game: newGame,
-        players: playersToStartGame,
-      },
-    };
-    setCourtData((oldCourtData) => ({
-      ...oldCourtData,
-      ...courtToStartGame,
-    }));
+    if (!nextCourt) {
+      // Add to queue if no court is available
+      if (gameQueue.length < 6) {
+        setGameQueue((oldQueue) => [...oldQueue, newGame]);
+        // Store players for the queued game
+        setQueuedGamePlayers((current) => [
+          ...current,
+          {
+            gameId: newGame.id,
+            players: selectedPlayers.map((p) => ({ id: p.id, name: p.name })),
+          },
+        ]);
+        console.log("Game added to queue. Position:", gameQueue.length + 1);
+      } else {
+        console.error("Queue is full! Cannot add more games.");
+      }
+    } else {
+      // Assign to available court
+      assignGameToCourt(newGame, nextCourt, playersToStartGame);
+    }
 
-    setGames((oldGames) => [...oldGames, newGame]);
-
-    // Reset selected players.
+    // Reset selected players
     setSelectedPlayers([]);
   };
 
-  /**
-   * Finish a game.
-   * TODO: Describe.
-   */
   const releaseCourt = (courtId: string) => {
     const foundCourtData: CourtData[0] | undefined = courtData[courtId];
 
     if (!foundCourtData) {
       console.warn("Court is not found to be released.");
-
       return;
     }
 
@@ -246,7 +221,7 @@ function App() {
 
     setPlayers(updatedPlayers);
 
-    // Reset court.
+    // Reset court
     const courtToRelease: CourtData = {
       [foundCourtData.court.id]: {
         court: { ...foundCourtData.court, status: "available" },
@@ -261,9 +236,7 @@ function App() {
     }));
   };
 
-  /**
-   * TODO: describe
-   */
+  // Effect to handle court availability and queue assignment
   useEffect(() => {
     const nextAvailableCourtsData = Object.values(courtData)
       .filter(({ court }) => court.status === "available")
@@ -276,8 +249,26 @@ function App() {
       setNextCourt(null);
     } else {
       setNextCourt({ ...nextAvailableCourtsData[0].court });
+
+      // If there's a game in queue and a court becomes available, assign it
+      if (gameQueue.length > 0 && nextAvailableCourtsData[0]) {
+        const [nextGame, ...remainingQueue] = gameQueue;
+        const playersInGame = players.filter((player) =>
+          [
+            ...nextGame.firstParty.playerIds,
+            ...nextGame.secondParty.playerIds,
+          ].includes(player.id),
+        );
+
+        assignGameToCourt(
+          nextGame,
+          nextAvailableCourtsData[0].court,
+          playersInGame,
+        );
+        setGameQueue(remainingQueue);
+      }
     }
-  }, [courtData, games]);
+  }, [courtData, games, gameQueue]);
 
   return (
     <div className="min-h-screen bg-gray-100 px-8 py-4">
@@ -302,6 +293,7 @@ function App() {
               selectPlayers={selectPlayers}
               selectedPlayers={selectedPlayers}
               startGame={startGame}
+              queueLength={gameQueue.length}
             />
           </ConfigProvider>
         </section>
@@ -311,7 +303,13 @@ function App() {
             <LayoutGrid size="1em" className="mr-2" /> Courts
           </h2>
 
-          <CourtDisplay courtData={courtData} releaseCourt={releaseCourt} />
+          <CourtDisplay
+            courtData={courtData}
+            releaseCourt={releaseCourt}
+            queueLength={gameQueue.length}
+            queuedGames={gameQueue}
+            queuedGamePlayers={queuedGamePlayers}
+          />
         </section>
       </div>
     </div>

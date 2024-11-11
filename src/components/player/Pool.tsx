@@ -14,6 +14,7 @@ interface PlayerPoolProps {
   selectPlayers: (players: Player[]) => void;
   selectedPlayers: Player[];
   startGame: () => void;
+  queueLength: number;
 }
 
 const PlayerPool: React.FC<PlayerPoolProps> = ({
@@ -24,6 +25,7 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
   selectPlayers,
   selectedPlayers,
   startGame,
+  queueLength,
 }) => {
   const config = useRuntimeConfig();
 
@@ -48,9 +50,10 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
 
   const oldAutoSelectionSize = useRef(config.game.getAutoSelectionSize());
   const autoSelectionSize = config.game.getAutoSelectionSize();
-  const canStartGame =
-    selectedPlayers.length === config.game.settings.playerNumber &&
-    nextCourtAvailable;
+  const hasEnoughPlayers =
+    selectedPlayers.length === config.game.settings.playerNumber;
+  const queueNotFull = queueLength < 6;
+  const canStartGame = hasEnoughPlayers && (nextCourtAvailable || queueNotFull);
   const canAutoSelect = availablePlayers.length >= autoSelectionSize;
 
   const autoSelectPlayers = useCallback(
@@ -139,6 +142,13 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
     ]);
   };
 
+  const getStartButtonText = () => {
+    if (!hasEnoughPlayers) return "Start Game";
+    if (nextCourtAvailable) return "Start Game";
+    if (!queueNotFull) return "Queue Full";
+    return "Add to Queue";
+  };
+
   return (
     <div
       className={`[--sa-list-item-width:_50%] sm:[--sa-list-item-width:_25%]`}
@@ -224,7 +234,7 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
           }`}
         >
           <PlayCircle size="1.5em" className="mr-2 flex-shrink-0" />
-          <span className="whitespace-nowrap">Start Game</span>
+          <span className="whitespace-nowrap">{getStartButtonText()}</span>
         </button>
 
         <button
