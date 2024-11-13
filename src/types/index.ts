@@ -13,6 +13,13 @@ export interface Player {
   status: "available" | "unavailable";
 }
 
+export interface PlayerPair {
+  id: string;
+  playerIds: [string, string];
+  name: string;
+  createdAt: number;
+}
+
 export interface Match {
   id: string;
   courtId: number;

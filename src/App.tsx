@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Users, LayoutGrid } from "lucide-react";
+import { Users, LayoutGrid, UserPlus2 } from "lucide-react";
 import { v4 as uuid } from "uuid";
 import PlayerPool from "./components/player/Pool";
 import CourtDisplay from "./components/CourtDisplay";
+import PairManagement from "./components/player/PairManagement";
 import { ConfigProvider } from "@contexts";
 import { useRuntimeConfig } from "@hooks";
 import {
@@ -10,43 +11,12 @@ import {
   buildInitialPlayers,
   generateQueueNumber,
 } from "@utils";
-import type { Court, CourtData, Game, Player } from "@types";
-
-// interface ShuttleApp {
-//   //
-//   playerContext?: {
-//     players: Player[];
-//     addPlayer: (name: string) => void;
-//   };
-
-//   //
-//   gameContext?: {
-//     games: Game[];
-//     createGame: (game: Omit<Game, "id">) => Game;
-//   };
-
-//   //
-//   matchContext?: {
-//     matches: Match[];
-//     createMatch: (court: Court) => Match;
-//   };
-
-//   //
-//   courtContext?: {
-//     courts: CourtData;
-//     availableCourtId: number;
-//   };
-// }
-
-// export const ShuttleAppContext = React.createContext<ShuttleApp | null>(null);
+import type { Court, CourtData, Game, Player, PlayerPair } from "@types";
 
 let initialPlayers: Player[] = [];
 let initialCourtData: CourtData = {};
 
-// https://react.dev/learn/you-might-not-need-an-effect#initializing-the-application
-// Initialize data only when running on the browser
 if (typeof window !== "undefined") {
-  // Only runs once per app load
   initialPlayers = buildInitialPlayers();
   initialCourtData = buildInitialCourtData();
 }
@@ -55,16 +25,14 @@ function App() {
   const [courtData, setCourtData] = useState<CourtData>(initialCourtData);
   const [games, setGames] = useState<Game[]>([]);
   const [players, setPlayers] = useState<Player[]>(initialPlayers);
+  const [pairs, setPairs] = useState<PlayerPair[]>([]);
+  const [isPairManagementOpen, setIsPairManagementOpen] = useState(false);
 
   const [selectedPlayers, setSelectedPlayers] = useState<Player[]>([]);
   const [nextCourt, setNextCourt] = useState<Court | null>(null);
 
   const config = useRuntimeConfig();
 
-  /**
-   * Add new player to pool.
-   * TODO: describe
-   */
   const addPlayer = (name: string) => {
     const basePlayer: Player = {
       id: uuid(),
@@ -96,10 +64,20 @@ function App() {
     }
   };
 
-  /**
-   * Select player.
-   * TODO: describe
-   */
+  const handleCreatePair = (playerIds: [string, string], name: string) => {
+    const newPair: PlayerPair = {
+      id: uuid(),
+      playerIds,
+      name,
+      createdAt: Date.now(),
+    };
+    setPairs([...pairs, newPair]);
+  };
+
+  const handleDeletePair = (pairId: string) => {
+    setPairs(pairs.filter((pair) => pair.id !== pairId));
+  };
+
   const selectPlayer = (player: Player) => {
     const isAutoSelected = selectedPlayers
       .slice(0, config.game.getAutoSelectionSize())
@@ -109,39 +87,55 @@ function App() {
       return;
     }
 
+    // Find if player is part of a pair
+    const playerPair = pairs.find((pair) => pair.playerIds.includes(player.id));
+
     const isSelected = selectedPlayers.some(
       (selectedPlayer) => selectedPlayer.id === player.id,
     );
 
     if (isSelected) {
-      // unselect
-      setSelectedPlayers(
-        selectedPlayers.filter(
-          (selectedPlayer) => selectedPlayer.id !== player.id,
-        ),
-      );
+      // If player is part of a pair, remove both players
+      if (playerPair) {
+        setSelectedPlayers(
+          selectedPlayers.filter(
+            (selectedPlayer) =>
+              !playerPair.playerIds.includes(selectedPlayer.id),
+          ),
+        );
+      } else {
+        // Remove single player
+        setSelectedPlayers(
+          selectedPlayers.filter(
+            (selectedPlayer) => selectedPlayer.id !== player.id,
+          ),
+        );
+      }
     } else if (selectedPlayers.length < config.game.settings.playerNumber) {
-      // select
-      setSelectedPlayers([...selectedPlayers, player]);
+      if (playerPair) {
+        // If adding a paired player would exceed player limit, don't add
+        if (selectedPlayers.length + 2 > config.game.settings.playerNumber) {
+          return;
+        }
+        // Add both players from the pair
+        const pairedPlayers = players.filter((p) =>
+          playerPair.playerIds.includes(p.id),
+        );
+        setSelectedPlayers([...selectedPlayers, ...pairedPlayers]);
+      } else {
+        // Add single player
+        setSelectedPlayers([...selectedPlayers, player]);
+      }
     }
   };
 
-  /**
-   * Select multiple players.
-   * TODO: describe
-   */
-  const selectPlayers = (players: Player[]) => {
-    setSelectedPlayers(players);
+  const selectPlayers = (playersToSelect: Player[]) => {
+    setSelectedPlayers(playersToSelect);
   };
 
-  /**
-   * Start game.
-   * TODO: describe
-   */
   const startGame = () => {
     if (selectedPlayers.length !== 4) {
       console.log("Not enough player. Do nothing");
-
       return;
     }
 
@@ -149,7 +143,6 @@ function App() {
       console.error(
         "No available court to start game! Please try again later.",
       );
-
       return;
     }
 
@@ -159,28 +152,23 @@ function App() {
       id: uuid(),
       courtId: nextCourt.id,
       firstParty: {
-        playerIds: selectedPlayerIds.slice(0, 1),
+        playerIds: selectedPlayerIds.slice(0, 2),
         score: 0,
       },
       secondParty: {
-        playerIds: selectedPlayerIds.slice(2, 3),
+        playerIds: selectedPlayerIds.slice(2, 4),
         score: 0,
       },
       index: games.length + 1,
       timestamp: Date.now(),
     };
 
-    // Cloning data to update
     const playersToStartGame = [...selectedPlayers];
     const updatedPlayers = [...players];
 
     playersToStartGame.forEach(({ index: playerIndex }) => {
       const foundPlayer = updatedPlayers[playerIndex];
-
-      if (!foundPlayer) {
-        return;
-      }
-
+      if (!foundPlayer) return;
       foundPlayer.status = "unavailable";
     });
 
@@ -200,21 +188,14 @@ function App() {
     }));
 
     setGames((oldGames) => [...oldGames, newGame]);
-
-    // Reset selected players.
     setSelectedPlayers([]);
   };
 
-  /**
-   * Finish a game.
-   * TODO: Describe.
-   */
   const releaseCourt = (courtId: string) => {
     const foundCourtData: CourtData[0] | undefined = courtData[courtId];
 
     if (!foundCourtData) {
       console.warn("Court is not found to be released.");
-
       return;
     }
 
@@ -226,16 +207,12 @@ function App() {
         ),
     );
 
-    // Cloning data to update
     const playersToRelease = [...foundCourtData.players];
     const updatedPlayers = [...players];
 
     playersToRelease.forEach(({ index: playerIndex }, playerToReleaseIndex) => {
       const foundPlayer = updatedPlayers[playerIndex];
-
-      if (!foundPlayer) {
-        return;
-      }
+      if (!foundPlayer) return;
 
       foundPlayer.status = "available";
       foundPlayer.queueNumber = generateQueueNumber({
@@ -246,7 +223,6 @@ function App() {
 
     setPlayers(updatedPlayers);
 
-    // Reset court.
     const courtToRelease: CourtData = {
       [foundCourtData.court.id]: {
         court: { ...foundCourtData.court, status: "available" },
@@ -261,9 +237,6 @@ function App() {
     }));
   };
 
-  /**
-   * TODO: describe
-   */
   useEffect(() => {
     const nextAvailableCourtsData = Object.values(courtData)
       .filter(({ court }) => court.status === "available")
@@ -282,9 +255,18 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-100 px-8 py-4">
       <header className="mb-4 lg:mb-8">
-        <h1 className="font-heading text-lg font-bold text-blue-600 sm:text-center lg:text-2xl">
-          Badminton Court Management
-        </h1>
+        <div className="flex items-center justify-between">
+          <h1 className="font-heading text-lg font-bold text-blue-600 lg:text-2xl">
+            Badminton Court Management
+          </h1>
+          <button
+            onClick={() => setIsPairManagementOpen(true)}
+            className="flex items-center rounded bg-blue-500 px-3 py-1 text-white hover:bg-blue-600"
+          >
+            <UserPlus2 size="1.2em" className="mr-2" />
+            <span className="text-sm">Manage Pairs</span>
+          </button>
+        </div>
       </header>
 
       <div className="mx-auto max-w-6xl space-y-4">
@@ -296,6 +278,7 @@ function App() {
           <ConfigProvider>
             <PlayerPool
               players={players}
+              pairs={pairs}
               addPlayer={addPlayer}
               nextCourtAvailable={nextCourt !== null}
               selectPlayer={selectPlayer}
@@ -314,6 +297,15 @@ function App() {
           <CourtDisplay courtData={courtData} releaseCourt={releaseCourt} />
         </section>
       </div>
+
+      <PairManagement
+        isOpen={isPairManagementOpen}
+        onClose={() => setIsPairManagementOpen(false)}
+        players={players}
+        pairs={pairs}
+        onCreatePair={handleCreatePair}
+        onDeletePair={handleDeletePair}
+      />
     </div>
   );
 }
