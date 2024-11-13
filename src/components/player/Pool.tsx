@@ -2,12 +2,13 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Dices, PlayCircle, UserPlus } from "lucide-react";
 import PlayerListItem from "./ListItem";
 import { useRuntimeConfig } from "@hooks";
-import type { Player } from "@types";
+import type { Player, PlayerPair } from "@types";
 import { parseQueueNumberToOrder } from "@utils";
 import styles from "./pool.module.css";
 
 interface PlayerPoolProps {
   players: Player[];
+  pairs: PlayerPair[];
   addPlayer: (name: string) => void;
   nextCourtAvailable: boolean;
   selectPlayer: (player: Player) => void;
@@ -18,6 +19,7 @@ interface PlayerPoolProps {
 
 const PlayerPool: React.FC<PlayerPoolProps> = ({
   players,
+  pairs,
   addPlayer,
   nextCourtAvailable,
   selectPlayer,
@@ -33,7 +35,6 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
     e.preventDefault();
     if (newPlayerName.trim()) {
       addPlayer(newPlayerName.trim());
-
       setNewPlayerName("");
     }
   };
@@ -53,21 +54,50 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
     nextCourtAvailable;
   const canAutoSelect = availablePlayers.length >= autoSelectionSize;
 
+  // Helper function to get paired player if exists
+  const getPairedPlayer = (playerId: string): Player | null => {
+    const pair = pairs.find((p) => p.playerIds.includes(playerId));
+    if (!pair) return null;
+
+    const pairedPlayerId = pair.playerIds.find((id) => id !== playerId);
+    if (!pairedPlayerId) return null;
+
+    return availablePlayers.find((p) => p.id === pairedPlayerId) || null;
+  };
+
+  // Helper function to get initial selection considering pairs
+  const getInitialSelection = (size: number): Player[] => {
+    const selection: Player[] = [];
+    let index = 0;
+
+    while (selection.length < size && index < availablePlayers.length) {
+      const player = availablePlayers[index];
+      const pairedPlayer = getPairedPlayer(player.id);
+
+      if (pairedPlayer) {
+        // If this is a paired player and we have room for both
+        if (selection.length + 2 <= config.game.settings.playerNumber) {
+          selection.push(player, pairedPlayer);
+        }
+      } else if (selection.length + 1 <= size) {
+        // If this is a single player and we have room
+        selection.push(player);
+      }
+
+      index++;
+    }
+
+    return selection;
+  };
+
   const autoSelectPlayers = useCallback(
     (suggestionSize: number): void => {
-      const toBeSelectedPlayers = Array.from(Array(suggestionSize).keys()).map(
-        (i) => availablePlayers[i],
-      );
-
-      selectPlayers(toBeSelectedPlayers);
+      const initialSelection = getInitialSelection(suggestionSize);
+      selectPlayers(initialSelection);
     },
-    [availablePlayers, selectPlayers],
+    [availablePlayers, pairs, config.game.settings.playerNumber, selectPlayers],
   );
 
-  /**
-   * Auto select available player(s) as lead players as soon as
-   * 1 or more are in or returned to the pool
-   */
   useEffect(() => {
     if (!(selectedPlayers.length === 0 && canAutoSelect)) {
       return;
@@ -97,9 +127,6 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
     selectPlayers,
   ]);
 
-  /**
-   * Suggestion
-   */
   const suggestPlayers = () => {
     if (availablePlayers.length < config.game.settings.playerNumber) {
       console.error(
@@ -108,35 +135,70 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
       return;
     }
 
-    // Skip randomizing if the number of available players is equal to the expected number of players per game
     if (availablePlayers.length === config.game.settings.playerNumber) {
       selectPlayers(availablePlayers);
       return;
     }
 
-    const randomizedPlayerIndexes: number[] = [];
+    // Get initial selection (including pairs)
+    const initialSelection = getInitialSelection(autoSelectionSize);
+
+    // Calculate how many more players we need
+    const remainingNeeded =
+      config.game.settings.playerNumber - initialSelection.length;
+
+    if (remainingNeeded <= 0) {
+      selectPlayers(initialSelection);
+      return;
+    }
+
+    // Get available players excluding already selected ones
+    const remainingPlayers = availablePlayers.filter(
+      (player) => !initialSelection.some((p) => p.id === player.id),
+    );
+
+    // Randomly select from remaining players, considering pairs
+    const randomSelected: Player[] = [];
+    const usedIndexes = new Set<number>();
 
     while (
-      randomizedPlayerIndexes.length < config.game.settings.suggestionSize
+      randomSelected.length < remainingNeeded &&
+      usedIndexes.size < remainingPlayers.length
     ) {
-      const randomizedIndex =
-        Math.floor(
-          Math.random() * (availablePlayers.length - autoSelectionSize),
-        ) + autoSelectionSize;
+      const availableIndexes = Array.from(
+        Array(remainingPlayers.length).keys(),
+      ).filter((i) => !usedIndexes.has(i));
 
-      if (!randomizedPlayerIndexes.includes(randomizedIndex)) {
-        randomizedPlayerIndexes.push(randomizedIndex);
+      if (availableIndexes.length === 0) break;
+
+      const randomIndex =
+        availableIndexes[Math.floor(Math.random() * availableIndexes.length)];
+      const player = remainingPlayers[randomIndex];
+      const pairedPlayer = getPairedPlayer(player.id);
+
+      usedIndexes.add(randomIndex);
+
+      if (pairedPlayer) {
+        const pairedPlayerIndex = remainingPlayers.findIndex(
+          (p) => p.id === pairedPlayer.id,
+        );
+        if (pairedPlayerIndex !== -1) {
+          usedIndexes.add(pairedPlayerIndex);
+        }
+
+        if (randomSelected.length + 2 <= remainingNeeded) {
+          randomSelected.push(player, pairedPlayer);
+        }
+      } else if (randomSelected.length + 1 <= remainingNeeded) {
+        randomSelected.push(player);
       }
     }
 
-    selectPlayers([
-      ...Array.from(Array(autoSelectionSize).keys()).map(
-        (startPlayerIndex) => availablePlayers[startPlayerIndex],
-      ),
-      ...randomizedPlayerIndexes.map(
-        (randomizedPlayerIndex) => availablePlayers[randomizedPlayerIndex],
-      ),
-    ]);
+    selectPlayers([...initialSelection, ...randomSelected]);
+  };
+
+  const isPaired = (player: Player) => {
+    return pairs.some((pair) => pair.playerIds.includes(player.id));
   };
 
   return (
@@ -182,6 +244,7 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
             selected={selectedPlayers.some(
               (selectedPlayer) => selectedPlayer.id === player.id,
             )}
+            isPaired={isPaired(player)}
           />
         ))}
       </ul>
