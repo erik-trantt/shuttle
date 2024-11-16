@@ -28,7 +28,9 @@ const UserManagement: React.FC<UserManagementProps> = ({
   const [pairName, setPairName] = useState("");
   const [newPlayerName, setNewPlayerName] = useState("");
 
-  const availablePlayers = players.filter(
+  // Players available for pairing
+  // - Available players are those that are not paired or in the process of playing
+  const availablePlayersForPairing = players.filter(
     (player) =>
       player.status === "available" &&
       !pairs.some((pair) => pair.playerIds.includes(player.id)),
@@ -75,7 +77,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
   };
 
   const createRandomPair = () => {
-    const randomPlayers = availablePlayers
+    const randomPlayers = availablePlayersForPairing
       .sort(() => Math.random() - 0.5)
       .slice(0, 2);
     setSelectedPlayers(randomPlayers.map((player) => player.id));
@@ -85,29 +87,31 @@ const UserManagement: React.FC<UserManagementProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+      className="fixed inset-0 z-50 flex bg-black bg-opacity-50"
       onClick={onClose}
     >
       <div
-        className="relative mx-4 my-6 max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg bg-white p-6 shadow-lg"
+        className="relative my-6 ml-auto w-full max-w-xs overflow-y-auto overscroll-contain rounded-lg bg-white p-6 shadow-lg sm:mr-auto sm:max-w-md"
         onClick={(e) => e.stopPropagation()}
       >
         <button
-          onClick={onClose}
+          title="Close"
           className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
+          onClick={onClose}
         >
           <X size="1.5em" />
         </button>
 
         <div className="mb-4 flex space-x-4 border-b">
           <button
-            className={`pb-2 ${activeTab === "players" ? "border-b-2 border-blue-500 font-semibold text-blue-500" : "text-gray-500"}`}
+            className={`pb-2 ${activeTab === "players" ? "border-b-2 border-blue-500 font-bold text-blue-500" : "text-gray-500"}`}
             onClick={() => setActiveTab("players")}
           >
             Manage Players
           </button>
+
           <button
-            className={`pb-2 ${activeTab === "pairs" ? "border-b-2 border-blue-500 font-semibold text-blue-500" : "text-gray-500"}`}
+            className={`pb-2 ${activeTab === "pairs" ? "border-b-2 border-blue-500 font-bold text-blue-500" : "text-gray-500"}`}
             onClick={() => setActiveTab("pairs")}
           >
             Manage Pairs
@@ -117,9 +121,9 @@ const UserManagement: React.FC<UserManagementProps> = ({
         {activeTab === "pairs" ? (
           <>
             <div className="mb-4">
-              <h3 className="mb-2 font-semibold">Create New Pair</h3>
+              <h3 className="mb-2 font-bold">Create New Pair</h3>
 
-              <form onSubmit={handleCreatePair} className="mb-2 flex gap-x-2">
+              <form onSubmit={handleCreatePair} className="mb-4 flex gap-x-2">
                 <input
                   type="text"
                   value={pairName}
@@ -148,8 +152,8 @@ const UserManagement: React.FC<UserManagementProps> = ({
                 </button>
               </form>
 
-              <div className="mb-2 grid grid-cols-2 gap-2">
-                {availablePlayers.map((player) => (
+              <div className="grid grid-cols-2 gap-2">
+                {availablePlayersForPairing.map((player) => (
                   <button
                     key={player.id}
                     onClick={() => handlePlayerSelect(player.id)}
@@ -166,7 +170,8 @@ const UserManagement: React.FC<UserManagementProps> = ({
             </div>
 
             <div>
-              <h3 className="mb-2 font-semibold">Existing Pairs</h3>
+              <h3 className="mb-4 font-bold">Existing Pairs</h3>
+
               <div className="space-y-2">
                 {pairs.map((pair) => (
                   <div
@@ -174,9 +179,11 @@ const UserManagement: React.FC<UserManagementProps> = ({
                     className="flex items-center justify-between rounded bg-gray-50 p-2"
                   >
                     <span>{pair.name}</span>
+
                     <button
+                      title="Unpair"
                       onClick={() => onDeletePair(pair.id)}
-                      className="text-red-500 hover:text-red-700"
+                      className="ml-2 text-red-500 hover:text-red-700"
                     >
                       <Link2Off size="1em" />
                     </button>
@@ -188,7 +195,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
         ) : (
           <div>
             <div className="mb-4">
-              <h3 className="mb-2 font-semibold">Add New Player</h3>
+              <h3 className="mb-2 font-bold">Add New Player</h3>
 
               <form onSubmit={handleCreatePlayer} className="flex space-x-2">
                 <input
@@ -211,7 +218,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
             </div>
 
             <div>
-              <h3 className="mb-2 font-semibold">Players List</h3>
+              <h3 className="mb-2 font-bold">Players List</h3>
               <div className="space-y-2">
                 {players.map((player) => (
                   <div
@@ -219,9 +226,11 @@ const UserManagement: React.FC<UserManagementProps> = ({
                     className="flex items-center justify-between rounded bg-gray-50 p-2"
                   >
                     <span>{player.name}</span>
+
                     <button
+                      title="Delete"
                       onClick={() => onDeletePlayer(player.id)}
-                      className="text-red-500 hover:text-red-700"
+                      className="ml-2 text-red-500 hover:text-red-700"
                     >
                       <Trash2 size="1em" />
                     </button>

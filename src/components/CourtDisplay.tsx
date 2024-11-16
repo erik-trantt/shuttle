@@ -19,7 +19,7 @@ const CourtDisplay: React.FC<CourtDisplayProps> = ({
           className={`relative overflow-hidden rounded-lg shadow-md`}
         >
           <div className="flex w-full items-center justify-between bg-gray-100 px-2">
-            <h3 className="text-sm font-semibold">{data.court.name}</h3>
+            <h3 className="text-sm font-bold">{data.court.name}</h3>
 
             <button
               title={`Finish ${data.court.name}`}

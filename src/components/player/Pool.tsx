@@ -471,7 +471,7 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
 
       <div className="flex flex-wrap gap-x-2 gap-y-4 text-xs sm:text-base">
         <div className="max-w-full basis-full">
-          <h3 className="mb-1 font-semibold">Confirming selection</h3>
+          <h3 className="mb-1 font-bold">Confirming selection</h3>
 
           <ol
             className={[

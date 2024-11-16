@@ -75,7 +75,7 @@ const PlayerListItem: React.FC<PlayerListItemProps> = ({
         {player.name}
         {pairInfo && (
           <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1 text-blue-500">
-            <span className="text-xs font-medium">P{pairInfo.pairNumber}</span>
+            <span className="text-xs font-bold">P{pairInfo.pairNumber}</span>
             <Users2 size="1em" />
           </div>
         )}
