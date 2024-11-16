@@ -3,6 +3,7 @@ export interface Court {
   name: string;
   index: number;
   status: "available" | "unavailable" | "playing";
+  locked: boolean;
 }
 
 export interface Player {

@@ -272,9 +272,30 @@ function App() {
     }));
   };
 
+  const toggleCourtLock = (courtId: string) => {
+    const foundCourtData = courtData[courtId];
+    if (!foundCourtData) return;
+
+    const updatedCourtData: CourtData = {
+      [courtId]: {
+        ...foundCourtData,
+        court: {
+          ...foundCourtData.court,
+          locked: !foundCourtData.court.locked,
+          status: foundCourtData.court.locked ? "available" : "unavailable",
+        },
+      },
+    };
+
+    setCourtData((prevData) => ({
+      ...prevData,
+      ...updatedCourtData,
+    }));
+  };
+
   useEffect(() => {
     const nextAvailableCourtsData = Object.values(courtData)
-      .filter(({ court }) => court.status === "available")
+      .filter(({ court }) => court.status === "available" && !court.locked)
       .sort(
         (courtDataA, courtDataB) =>
           courtDataA.court.index - courtDataB.court.index,
@@ -330,7 +351,11 @@ function App() {
             <LayoutGrid size="1em" className="mr-2" /> Courts
           </h2>
 
-          <CourtDisplay courtData={courtData} releaseCourt={releaseCourt} />
+          <CourtDisplay
+            courtData={courtData}
+            releaseCourt={releaseCourt}
+            toggleCourtLock={toggleCourtLock}
+          />
         </section>
       </div>
 

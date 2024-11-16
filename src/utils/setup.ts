@@ -48,6 +48,7 @@ export const buildInitialCourtData = (): CourtData => {
           name: `Court ${index + 1}`,
           index,
           status: "available",
+          locked: false,
         },
         players: [],
       },
