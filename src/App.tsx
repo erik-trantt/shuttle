@@ -72,10 +72,32 @@ function App() {
       createdAt: Date.now(),
     };
     setPairs([...pairs, newPair]);
+
+    // Update players with their partner IDs
+    setPlayers(players.map(player => {
+      if (player.id === playerIds[0]) {
+        return { ...player, partnerId: playerIds[1] };
+      }
+      if (player.id === playerIds[1]) {
+        return { ...player, partnerId: playerIds[0] };
+      }
+      return player;
+    }));
   };
 
   const handleDeletePair = (pairId: string) => {
+    const pairToDelete = pairs.find(pair => pair.id === pairId);
     setPairs(pairs.filter((pair) => pair.id !== pairId));
+    
+    // Remove partner IDs when pair is deleted
+    if (pairToDelete) {
+      setPlayers(players.map(player => {
+        if (pairToDelete.playerIds.includes(player.id)) {
+          return { ...player, partnerId: undefined };
+        }
+        return player;
+      }));
+    }
   };
 
   const selectPlayer = (player: Player) => {

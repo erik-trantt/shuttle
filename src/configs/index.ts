@@ -1,25 +1,17 @@
 export enum GAME_FORMATS {
-  DOUBLE = "double",
-  SINGLE = "single",
+  DOUBLE = "DOUBLE",
+  SINGLE = "SINGLE",
+  PAIRED_DOUBLE = "PAIRED_DOUBLE",
 }
 
-export type GameFormatType = keyof typeof GAME_FORMATS;
+export type GameFormatType = "DOUBLE" | "SINGLE" | "PAIRED_DOUBLE";
 
-interface BaseGameSettings {
+export interface GameSettings {
+  format: GameFormatType;
   playerNumber: number;
   suggestionSize: number;
-  format: GameFormatType;
+  allowPairs: boolean;
 }
-
-export interface DoubleGameSettings extends BaseGameSettings {
-  format: "DOUBLE";
-}
-
-export interface SingleGameSettings extends BaseGameSettings {
-  format: "SINGLE";
-}
-
-export type GameSettings = SingleGameSettings | DoubleGameSettings;
 
 export function buildGameSettings(format: GameFormatType): GameSettings {
   switch (format) {
@@ -28,13 +20,25 @@ export function buildGameSettings(format: GameFormatType): GameSettings {
         format: "DOUBLE",
         playerNumber: 4,
         suggestionSize: 3,
+        allowPairs: true,
       };
     }
+
+    case "PAIRED_DOUBLE": {
+      return {
+        format: "PAIRED_DOUBLE",
+        playerNumber: 4,
+        suggestionSize: 2,
+        allowPairs: true,
+      };
+    }
+
     case "SINGLE": {
       return {
         format: "SINGLE",
         playerNumber: 2,
         suggestionSize: 1,
+        allowPairs: false,
       };
     }
   }
