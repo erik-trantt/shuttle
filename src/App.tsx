@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { Users, LayoutGrid, UserPlus2 } from "lucide-react";
 import { v4 as uuid } from "uuid";
-import PlayerPool from "./components/player/Pool";
-import CourtDisplay from "./components/CourtDisplay";
-import PairManagement from "./components/player/PairManagement";
+import PlayerPool from "@/components/player/Pool";
+import CourtDisplay from "@/components/CourtDisplay";
+import PairManagement from "@/components/player/UserManagement";
 import { ConfigProvider } from "@contexts";
 import { useRuntimeConfig } from "@hooks";
 import {
@@ -74,30 +74,43 @@ function App() {
     setPairs([...pairs, newPair]);
 
     // Update players with their partner IDs
-    setPlayers(players.map(player => {
-      if (player.id === playerIds[0]) {
-        return { ...player, partnerId: playerIds[1] };
-      }
-      if (player.id === playerIds[1]) {
-        return { ...player, partnerId: playerIds[0] };
-      }
-      return player;
-    }));
+    setPlayers(
+      players.map((player) => {
+        if (player.id === playerIds[0]) {
+          return { ...player, partnerId: playerIds[1] };
+        }
+        if (player.id === playerIds[1]) {
+          return { ...player, partnerId: playerIds[0] };
+        }
+        return player;
+      }),
+    );
   };
 
   const handleDeletePair = (pairId: string) => {
-    const pairToDelete = pairs.find(pair => pair.id === pairId);
+    const pairToDelete = pairs.find((pair) => pair.id === pairId);
     setPairs(pairs.filter((pair) => pair.id !== pairId));
-    
+
     // Remove partner IDs when pair is deleted
     if (pairToDelete) {
-      setPlayers(players.map(player => {
-        if (pairToDelete.playerIds.includes(player.id)) {
-          return { ...player, partnerId: undefined };
-        }
-        return player;
-      }));
+      setPlayers(
+        players.map((player) => {
+          if (pairToDelete.playerIds.includes(player.id)) {
+            return { ...player, partnerId: undefined };
+          }
+          return player;
+        }),
+      );
     }
+  };
+
+  const handleDeletePlayer = (id: string) => {
+    // Remove player from any pair they're in
+    const pairsWithPlayer = pairs.filter((pair) => pair.playerIds.includes(id));
+    pairsWithPlayer.forEach((pair) => handleDeletePair(pair.id));
+
+    // Remove the player
+    setPlayers(players.filter((player) => player.id !== id));
   };
 
   const selectPlayer = (player: Player) => {
@@ -286,7 +299,7 @@ function App() {
             className="flex items-center rounded bg-blue-500 px-3 py-1 text-white hover:bg-blue-600"
           >
             <UserPlus2 size="1.2em" className="mr-2" />
-            <span className="text-sm">Manage Pairs</span>
+            <span className="text-sm">User Management</span>
           </button>
         </div>
       </header>
@@ -301,7 +314,6 @@ function App() {
             <PlayerPool
               players={players}
               pairs={pairs}
-              addPlayer={addPlayer}
               nextCourtAvailable={nextCourt !== null}
               selectPlayer={selectPlayer}
               selectPlayers={selectPlayers}
@@ -327,6 +339,8 @@ function App() {
         pairs={pairs}
         onCreatePair={handleCreatePair}
         onDeletePair={handleDeletePair}
+        onCreatePlayer={addPlayer}
+        onDeletePlayer={handleDeletePlayer}
       />
     </div>
   );
