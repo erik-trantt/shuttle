@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Dices, PlayCircle, UserPlus } from "lucide-react";
+import React, { useCallback, useEffect, useRef } from "react";
+import { Dices, PlayCircle } from "lucide-react";
 import PlayerListItem from "./ListItem";
 import { useRuntimeConfig } from "@hooks";
 import type { Player, PlayerPair } from "@types";
@@ -9,7 +9,6 @@ import styles from "./pool.module.css";
 interface PlayerPoolProps {
   players: Player[];
   pairs: PlayerPair[];
-  addPlayer: (name: string) => void;
   nextCourtAvailable: boolean;
   selectPlayer: (player: Player) => void;
   selectPlayers: (players: Player[]) => void;
@@ -20,7 +19,6 @@ interface PlayerPoolProps {
 const PlayerPool: React.FC<PlayerPoolProps> = ({
   players,
   pairs,
-  addPlayer,
   nextCourtAvailable,
   selectPlayer,
   selectPlayers,
@@ -28,16 +26,6 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
   startGame,
 }) => {
   const config = useRuntimeConfig();
-
-  const [newPlayerName, setNewPlayerName] = useState("");
-
-  const handleAddPlayer = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newPlayerName.trim()) {
-      addPlayer(newPlayerName.trim());
-      setNewPlayerName("");
-    }
-  };
 
   const availablePlayers = players
     .filter((player) => player.status === "available")
@@ -453,24 +441,6 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
     <div
       className={`[--sa-list-item-width:_50%] sm:[--sa-list-item-width:_25%]`}
     >
-      <form onSubmit={handleAddPlayer} className="mb-4 flex">
-        <input
-          type="text"
-          value={newPlayerName}
-          onChange={(e) => setNewPlayerName(e.target.value)}
-          placeholder="Enter player name"
-          className="min-w-0 flex-grow rounded-l-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-
-        <button
-          type="submit"
-          className="flex items-center rounded-r-md bg-blue-500 px-4 py-2 text-xs text-white hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:text-base"
-        >
-          <UserPlus size="1.5em" className="mr-2" />
-          Add
-        </button>
-      </form>
-
       <ul
         className={[
           styles.ScrollShadows,
