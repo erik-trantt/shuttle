@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { Users, LayoutGrid, UserPlus2 } from "lucide-react";
 import { v4 as uuid } from "uuid";
-import PlayerPool from "@/components/player/Pool";
-import CourtDisplay from "@/components/CourtDisplay";
-import PairManagement from "@/components/player/UserManagement";
+import PlayerPool from "~/components/player/Pool";
+import CourtDisplay from "~/components/CourtDisplay";
+import PairManagement from "~/components/player/PlayerManagement";
 import { ConfigProvider } from "@contexts";
 import { useRuntimeConfig } from "@hooks";
 import {
