@@ -55,7 +55,9 @@ const UserManagement: React.FC<UserManagementProps> = ({
     }
   };
 
-  const handleCreatePair = () => {
+  const handleCreatePair = (event: React.FormEvent) => {
+    event.preventDefault();
+
     if (selectedPlayers.length === 2 && pairName.trim()) {
       onCreatePair(selectedPlayers as [string, string], pairName.trim());
       setSelectedPlayers([]);
@@ -63,7 +65,9 @@ const UserManagement: React.FC<UserManagementProps> = ({
     }
   };
 
-  const handleCreatePlayer = () => {
+  const handleCreatePlayer = (event: React.FormEvent) => {
+    event.preventDefault();
+
     if (newPlayerName.trim()) {
       onCreatePlayer(newPlayerName.trim());
       setNewPlayerName("");
@@ -115,7 +119,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
             <div className="mb-4">
               <h3 className="mb-2 font-semibold">Create New Pair</h3>
 
-              <div className="mb-2 flex gap-x-2">
+              <form onSubmit={handleCreatePair} className="mb-2 flex gap-x-2">
                 <input
                   type="text"
                   value={pairName}
@@ -125,11 +129,10 @@ const UserManagement: React.FC<UserManagementProps> = ({
                 />
 
                 <button
-                  type="button"
+                  type="submit"
                   title="Pair"
                   disabled={selectedPlayers.length !== 2 || !pairName.trim()}
                   className="flex w-min flex-shrink-0 items-center rounded bg-blue-500 px-2 disabled:bg-gray-200"
-                  onClick={handleCreatePair}
                 >
                   <Link2 size="1em" className="mr-2" />
                   Pair
@@ -137,14 +140,13 @@ const UserManagement: React.FC<UserManagementProps> = ({
 
                 <button
                   type="button"
-                  className="flex w-min flex-shrink-0 items-center rounded bg-gray-100 px-2"
                   title="Suggest"
+                  className="flex w-min flex-shrink-0 items-center rounded bg-gray-100 px-2"
                   onClick={createRandomPair}
                 >
                   <Dices size="1em" className="mr-2" />
-                  {/* Suggest */}
                 </button>
-              </div>
+              </form>
 
               <div className="mb-2 grid grid-cols-2 gap-2">
                 {availablePlayers.map((player) => (
@@ -187,7 +189,8 @@ const UserManagement: React.FC<UserManagementProps> = ({
           <div>
             <div className="mb-4">
               <h3 className="mb-2 font-semibold">Add New Player</h3>
-              <div className="flex space-x-2">
+
+              <form onSubmit={handleCreatePlayer} className="flex space-x-2">
                 <input
                   type="text"
                   value={newPlayerName}
@@ -197,14 +200,14 @@ const UserManagement: React.FC<UserManagementProps> = ({
                 />
 
                 <button
-                  onClick={handleCreatePlayer}
+                  type="submit"
                   disabled={!newPlayerName.trim()}
                   className="flex w-min flex-shrink-0 items-center rounded bg-blue-500 p-2 text-white disabled:bg-gray-300"
                 >
                   <UserPlus size="1em" className="mr-2" />
                   Add
                 </button>
-              </div>
+              </form>
             </div>
 
             <div>
