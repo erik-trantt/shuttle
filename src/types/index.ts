@@ -11,14 +11,6 @@ export interface Player {
   index: number;
   queueNumber: string;
   status: "available" | "unavailable";
-  partnerId?: string;
-}
-
-export interface PlayerPair {
-  id: string;
-  playerIds: [string, string];
-  name: string;
-  createdAt: number;
 }
 
 export interface Match {
