@@ -59,6 +59,13 @@ const PairManagement: React.FC<PairManagementProps> = ({
 
   if (!isOpen) return null;
 
+  const createRandomPair = () => {
+    const randomPlayers = availablePlayers
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 2);
+    setSelectedPlayers(randomPlayers.map((player) => player.id));
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
@@ -79,6 +86,7 @@ const PairManagement: React.FC<PairManagementProps> = ({
 
         <div className="mb-4">
           <h3 className="mb-2 font-semibold">Create New Pair</h3>
+
           <input
             type="text"
             value={pairName}
@@ -86,28 +94,39 @@ const PairManagement: React.FC<PairManagementProps> = ({
             placeholder="Pair name"
             className="mb-2 w-full rounded border p-2"
           />
+
           <div className="mb-2 grid grid-cols-2 gap-2">
             {availablePlayers.map((player) => (
               <button
                 key={player.id}
                 onClick={() => handlePlayerSelect(player.id)}
-                className={`rounded p-2 text-sm ${
-                  selectedPlayers.includes(player.id)
+                className={`rounded p-2 text-sm ${selectedPlayers.includes(player.id)
                     ? "bg-blue-500 text-white"
                     : "bg-gray-100"
-                }`}
+                  }`}
               >
                 {player.name}
               </button>
             ))}
           </div>
-          <button
-            onClick={handleCreatePair}
-            disabled={selectedPlayers.length !== 2 || !pairName.trim()}
-            className="w-full rounded bg-blue-500 p-2 text-white disabled:bg-gray-300"
-          >
-            Create Pair
-          </button>
+
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <button
+              onClick={handleCreatePair}
+              disabled={selectedPlayers.length !== 2 || !pairName.trim()}
+              className="w-full rounded bg-blue-500 p-2 text-white disabled:bg-gray-300"
+            >
+              Create Pair
+            </button>
+
+            <button
+              type="button"
+              className="w-full rounded bg-gray-100 p-2"
+              onClick={createRandomPair}
+            >
+              Random pair
+            </button>
+          </div>
         </div>
 
         <div>
