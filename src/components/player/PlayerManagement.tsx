@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, UserPlus, Trash2, Link2, Link2Off, Dices } from "lucide-react";
+import { X, UserPlus, Pause, Link2, Link2Off, Dices, Play } from "lucide-react";
 import type { Player, PlayerPair } from "@types";
 
 interface UserManagementProps {
@@ -11,6 +11,7 @@ interface UserManagementProps {
   onDeletePair: (pairId: string) => void;
   onCreatePlayer: (name: string) => void;
   onDeletePlayer: (id: string) => void;
+  onUndeletePlayer: (id: string) => void;
 }
 
 const UserManagement: React.FC<UserManagementProps> = ({
@@ -22,6 +23,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
   onDeletePair,
   onCreatePlayer,
   onDeletePlayer,
+  onUndeletePlayer,
 }) => {
   const [activeTab, setActiveTab] = useState<"pairs" | "players">("players");
   const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
@@ -157,13 +159,26 @@ const UserManagement: React.FC<UserManagementProps> = ({
                   <button
                     key={player.id}
                     onClick={() => handlePlayerSelect(player.id)}
+                    disabled={player.status !== "available"}
                     className={`rounded p-2 text-sm ${
                       selectedPlayers.includes(player.id)
                         ? "bg-blue-100 hover:bg-blue-200"
-                        : "bg-gray-100"
+                        : player.status !== "available"
+                          ? "cursor-not-allowed bg-gray-100 opacity-50"
+                          : "bg-gray-100 hover:bg-gray-200"
                     }`}
+                    title={
+                      player.status !== "available"
+                        ? `Player is ${player.status}`
+                        : undefined
+                    }
                   >
-                    {player.name}
+                    <span className="block truncate">{player.name}</span>
+                    {player.status !== "available" && (
+                      <span className="mt-1 block text-xs">
+                        ({player.status})
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -173,22 +188,50 @@ const UserManagement: React.FC<UserManagementProps> = ({
               <h3 className="mb-4 font-bold">Existing Pairs</h3>
 
               <div className="space-y-2">
-                {pairs.map((pair) => (
-                  <div
-                    key={pair.id}
-                    className="flex items-center justify-between rounded bg-gray-50 p-2"
-                  >
-                    <span>{pair.name}</span>
+                {pairs.map((pair) => {
+                  const player1 = players.find(
+                    (p) => p.id === pair.playerIds[0],
+                  );
+                  const player2 = players.find(
+                    (p) => p.id === pair.playerIds[1],
+                  );
+                  const isPlaying =
+                    player1?.status === "playing" ||
+                    player2?.status === "playing";
 
-                    <button
-                      title="Unpair"
-                      onClick={() => onDeletePair(pair.id)}
-                      className="ml-2 text-red-500 hover:text-red-700"
+                  return (
+                    <div
+                      key={pair.id}
+                      className="flex items-center justify-between rounded bg-gray-50 p-2"
                     >
-                      <Link2Off size="1em" />
-                    </button>
-                  </div>
-                ))}
+                      <div className="flex flex-col">
+                        <span>{pair.name}</span>
+                        {isPlaying && (
+                          <span className="text-xs text-green-600">
+                            Currently playing
+                          </span>
+                        )}
+                      </div>
+
+                      <button
+                        title={
+                          isPlaying
+                            ? "Cannot unpair players who are in a game"
+                            : "Unpair"
+                        }
+                        onClick={() => onDeletePair(pair.id)}
+                        disabled={isPlaying}
+                        className={`ml-2 ${
+                          isPlaying
+                            ? "cursor-not-allowed text-gray-400"
+                            : "text-red-500 hover:text-red-700"
+                        }`}
+                      >
+                        <Link2Off size="1em" />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </>
@@ -225,15 +268,53 @@ const UserManagement: React.FC<UserManagementProps> = ({
                     key={player.id}
                     className="flex items-center justify-between rounded bg-gray-50 p-2"
                   >
-                    <span>{player.name}</span>
+                    <div className="flex items-center">
+                      <span>{player.name}</span>
+                      {player.status === "playing" && (
+                        <span className="ml-2 rounded bg-green-100 px-2 py-0.5 text-xs text-green-800">
+                          Playing
+                        </span>
+                      )}
+                      {player.status === "unavailable" && (
+                        <span className="ml-2 rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-800">
+                          Unavailable
+                        </span>
+                      )}
+                    </div>
 
-                    <button
-                      title="Delete"
-                      onClick={() => onDeletePlayer(player.id)}
-                      className="ml-2 text-red-500 hover:text-red-700"
-                    >
-                      <Trash2 size="1em" />
-                    </button>
+                    <div>
+                      <button
+                        title="Undelete"
+                        onClick={() => onUndeletePlayer(player.id)}
+                        disabled={player.status !== "retired"}
+                        className={`group ml-2 ${
+                          player.status !== "retired"
+                            ? "cursor-not-allowed text-gray-400"
+                            : "text-green-500"
+                        }`}
+                      >
+                        <Play
+                          size="1em"
+                          className="group-enabled:group-hover:fill-current"
+                        />
+                      </button>
+
+                      <button
+                        title="Delete"
+                        onClick={() => onDeletePlayer(player.id)}
+                        disabled={player.status !== "available"}
+                        className={`group ml-2 ${
+                          player.status !== "available"
+                            ? "cursor-not-allowed text-gray-400"
+                            : "text-red-500"
+                        }`}
+                      >
+                        <Pause
+                          size="1em"
+                          className="group-enabled:group-hover:fill-current"
+                        />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

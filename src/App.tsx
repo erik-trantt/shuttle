@@ -65,6 +65,13 @@ function App() {
   };
 
   const handleCreatePair = (playerIds: [string, string], name: string) => {
+    // Only allow pairing available players
+    const playersToPair = players.filter((p) => playerIds.includes(p.id));
+    if (playersToPair.some((p) => p.status !== "available")) {
+      console.warn("Cannot pair players who are not available");
+      return;
+    }
+
     const newPair: PlayerPair = {
       id: uuid(),
       playerIds,
@@ -89,28 +96,63 @@ function App() {
 
   const handleDeletePair = (pairId: string) => {
     const pairToDelete = pairs.find((pair) => pair.id === pairId);
+    if (!pairToDelete) return;
+
+    // Only allow unpairing if neither player is currently playing
+    const pairedPlayers = players.filter((p) =>
+      pairToDelete.playerIds.includes(p.id),
+    );
+    if (pairedPlayers.some((p) => p.status === "playing")) {
+      console.warn("Cannot unpair players who are currently in a game");
+      return;
+    }
+
     setPairs(pairs.filter((pair) => pair.id !== pairId));
 
     // Remove partner IDs when pair is deleted
-    if (pairToDelete) {
-      setPlayers(
-        players.map((player) => {
-          if (pairToDelete.playerIds.includes(player.id)) {
-            return { ...player, partnerId: undefined };
-          }
-          return player;
-        }),
-      );
-    }
+    setPlayers(
+      players.map((player) => {
+        if (pairToDelete.playerIds.includes(player.id)) {
+          return { ...player, partnerId: undefined };
+        }
+        return player;
+      }),
+    );
   };
 
   const handleDeletePlayer = (id: string) => {
+    const playerToDelete = players.find((p) => p.id === id);
+    if (!playerToDelete) return;
+
+    // Don't allow deleting players who are currently playing
+    if (playerToDelete.status === "playing") {
+      console.warn("Cannot delete a player who is currently in a game");
+      return;
+    }
+
     // Remove player from any pair they're in
     const pairsWithPlayer = pairs.filter((pair) => pair.playerIds.includes(id));
     pairsWithPlayer.forEach((pair) => handleDeletePair(pair.id));
 
-    // Remove the player
-    setPlayers(players.filter((player) => player.id !== id));
+    // Remove player from selected player list if it's there
+    setSelectedPlayers(
+      selectedPlayers.filter((selectedPlayer) => selectedPlayer.id !== id),
+    );
+
+    // Mark player as retired instead of removing them
+    setPlayers(
+      players.map((player) =>
+        player.id === id ? { ...player, status: "retired" } : player,
+      ),
+    );
+  };
+
+  const handleUndeletePlayer = (id: string) => {
+    setPlayers(
+      players.map((player) =>
+        player.id === id ? { ...player, status: "available" } : player,
+      ),
+    );
   };
 
   const selectPlayer = (player: Player) => {
@@ -168,6 +210,9 @@ function App() {
     setSelectedPlayers(playersToSelect);
   };
 
+  /**
+   * Start a game with the selected players.
+   */
   const startGame = () => {
     if (selectedPlayers.length !== 4) {
       console.log("Not enough player. Do nothing");
@@ -204,7 +249,7 @@ function App() {
     playersToStartGame.forEach(({ index: playerIndex }) => {
       const foundPlayer = updatedPlayers[playerIndex];
       if (!foundPlayer) return;
-      foundPlayer.status = "unavailable";
+      foundPlayer.status = "playing";
     });
 
     setPlayers(updatedPlayers);
@@ -368,6 +413,7 @@ function App() {
         onDeletePair={handleDeletePair}
         onCreatePlayer={addPlayer}
         onDeletePlayer={handleDeletePlayer}
+        onUndeletePlayer={handleUndeletePlayer}
       />
     </div>
   );
