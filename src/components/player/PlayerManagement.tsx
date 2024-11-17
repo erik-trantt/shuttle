@@ -93,12 +93,12 @@ const UserManagement: React.FC<UserManagementProps> = ({
       onClick={onClose}
     >
       <div
-        className="relative my-6 ml-auto w-full max-w-xs overflow-y-auto overscroll-contain rounded-lg bg-white p-6 shadow-lg sm:mr-auto sm:max-w-md"
+        className="relative ml-auto w-full max-w-xs overflow-y-auto overscroll-contain rounded-l-lg bg-white p-6 shadow-lg sm:my-6 sm:mr-auto sm:max-w-md sm:rounded-r-lg"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           title="Close"
-          className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
+          className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 active:rounded-full active:bg-gray-300"
           onClick={onClose}
         >
           <X size="1.5em" />
