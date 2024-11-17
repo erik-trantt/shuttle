@@ -11,7 +11,7 @@ export interface Player {
   name: string;
   index: number;
   queueNumber: string;
-  status: "available" | "unavailable";
+  status: "available" | "unavailable" | "playing" | "retired";
   partnerId?: string;
 }
 
