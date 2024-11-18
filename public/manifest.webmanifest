@@ -1,19 +1,21 @@
 {
-  "name": "Shuttle | Badminton Court Management",
+  "name": "Shuttle | Badminton Game Management",
   "short_name": "Shuttle",
+  "description": "",
+  "theme_color": "#ffffff",
+  "background_color": "#ffffff",
+  "start_url": "/shuttle/",
+  "display": "standalone",
   "icons": [
     {
-      "src": "/favicon-192x192.png",
+      "src": "/shuttle/favicon-192x192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/favicon-512x512.png",
+      "src": "/shuttle/favicon-512x512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
-  ],
-  "theme_color": "#ffffff",
-  "background_color": "#ffffff",
-  "display": "standalone"
+  ]
 }
