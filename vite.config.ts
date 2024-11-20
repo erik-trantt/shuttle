@@ -1,7 +1,10 @@
-import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import path from "path";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { defineConfig } from "vite";
 import tsConfigs from "./tsconfig.app.json";
+
+const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
 // https://vitejs.dev/config/
 export default defineConfig(({ command }) => ({
@@ -9,6 +12,10 @@ export default defineConfig(({ command }) => ({
   base: "/shuttle/",
   server: {
     host: command === "serve" ? "0.0.0.0" : undefined,
+  },
+
+  build: {
+    minify: false,
   },
 
   /**
@@ -21,10 +28,10 @@ export default defineConfig(({ command }) => ({
           .filter(([_key, value]) => {
             return !value[0].endsWith("*");
           })
-          .map(([key, value]) => [key, path.resolve(__dirname, value[0])]),
+          .map(([key, value]) => [key, resolve(__dirname, value[0])]),
       ),
-      "@": path.resolve(__dirname, "./src"),
-      "~": path.resolve(__dirname, "./src"),
+      "@": resolve(__dirname, "./src"),
+      "~": resolve(__dirname, "./src"),
     },
   },
 }));
