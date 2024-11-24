@@ -1,14 +1,15 @@
-import React, { type ChangeEventHandler } from "react";
+import React, { useEffect, type ChangeEventHandler } from "react";
 import { Users2 } from "lucide-react";
 import type { Player, PlayerPair } from "@types";
 import { parseQueueNumberToOrder } from "@utils";
+import { useRuntimeConfig } from "@hooks";
 
 export interface PlayerListItemProps {
   disabled: boolean;
   player: Player;
   selectPlayer: (player: Player) => void;
   selected: boolean;
-  isPaired: boolean;
+  selectedPlayers: Player[];
   pairs: PlayerPair[];
   players: Player[];
 }
@@ -18,15 +19,23 @@ const PlayerListItem: React.FC<PlayerListItemProps> = ({
   player,
   selectPlayer,
   selected,
-  isPaired,
+  selectedPlayers,
   pairs,
   players,
 }) => {
   const order = parseQueueNumberToOrder(player.queueNumber);
+  const config = useRuntimeConfig();
+  const isPairingEnabled = config.game.settings.allowPairs;
 
   const handleOnChange: ChangeEventHandler<HTMLInputElement> = (_ev) => {
     selectPlayer(player);
   };
+
+  const isPaired = pairs.some((pair) => pair.playerIds.includes(player.id));
+
+  const isPairPlayerSelected = selectedPlayers.some(
+    (selectedPlayer) => selectedPlayer.id == player.partnerId,
+  );
 
   const getPairInfo = () => {
     if (!isPaired) return null;
@@ -44,11 +53,31 @@ const PlayerListItem: React.FC<PlayerListItemProps> = ({
 
     return {
       pairNumber,
-      partnerName: partner.name,
+      partner,
     };
   };
 
   const pairInfo = getPairInfo();
+
+  // useEffect(() => {
+  //   console.log(!isPairingEnabled, !pairInfo);
+  //   if (!isPairingEnabled || !pairInfo) {
+  //     return;
+  //   }
+
+  //   if (selected && !isPairPlayerSelected) {
+  //     console.log("Paired", "but partner is not selected");
+  //     console.log("Selecting partner", pairInfo.partner);
+
+  //     selectPlayer(pairInfo.partner);
+  //   }
+  // }, [
+  //   isPairingEnabled,
+  //   pairInfo,
+  //   selected,
+  //   isPairPlayerSelected,
+  //   selectPlayer,
+  // ]);
 
   return (
     <li className="flex" data-queue-number={order}>
@@ -70,7 +99,7 @@ const PlayerListItem: React.FC<PlayerListItemProps> = ({
           disabled ? "pointer-events-none opacity-25" : "",
           isPaired ? "pr-12" : "", // Increased right padding for pair number
         ].join(" ")}
-        title={pairInfo ? `Partner: ${pairInfo.partnerName}` : undefined}
+        title={pairInfo ? `Partner: ${pairInfo.partner.name}` : undefined}
       >
         {player.name}
         {pairInfo && (

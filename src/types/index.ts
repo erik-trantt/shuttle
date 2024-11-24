@@ -46,12 +46,11 @@ export interface Game {
   timestamp: number;
 }
 
-export type CourtData = Record<
-  string,
-  {
-    court: Court;
-    gameId?: string;
-    game?: Game;
-    players: Player[];
-  }
->;
+export type CourtDataItem = {
+  court: Court;
+  gameId?: string;
+  game?: Game;
+  players: Player[];
+};
+
+export type CourtData = Record<string, CourtDataItem>;

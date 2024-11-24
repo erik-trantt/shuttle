@@ -1,34 +1,35 @@
-import React, { useState, useEffect } from "react";
+import { useState } from "react";
 import { X, UserPlus, Pause, Link2, Link2Off, Dices, Play } from "lucide-react";
-import type { Player, PlayerPair } from "@types";
+import { v4 as uuid } from "uuid";
+import { usePlayer, usePairs, useCourt } from "@contexts";
+import { useRuntimeConfig } from "@hooks";
+import { generateQueueNumber } from "@utils";
 
-interface UserManagementProps {
+interface PlayerManagementProps {
   isOpen: boolean;
   onClose: () => void;
-  players: Player[];
-  pairs: PlayerPair[];
-  onCreatePair: (playerIds: [string, string], name: string) => void;
-  onDeletePair: (pairId: string) => void;
-  onCreatePlayer: (name: string) => void;
-  onDeletePlayer: (id: string) => void;
-  onUndeletePlayer: (id: string) => void;
 }
 
-const UserManagement: React.FC<UserManagementProps> = ({
+const PlayerManagement: React.FC<PlayerManagementProps> = ({
   isOpen,
   onClose,
-  players,
-  pairs,
-  onCreatePair,
-  onDeletePair,
-  onCreatePlayer,
-  onDeletePlayer,
-  onUndeletePlayer,
 }) => {
   const [activeTab, setActiveTab] = useState<"pairs" | "players">("players");
   const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
   const [pairName, setPairName] = useState("");
   const [newPlayerName, setNewPlayerName] = useState("");
+  const {
+    state: { players },
+    addPlayer,
+    deletePlayer,
+    undeletePlayer,
+    deletePair,
+  } = usePlayer();
+  const pairs = usePairs();
+  const config = useRuntimeConfig();
+  const { games } = useCourt();
+
+  const isPairingEnabled = config.game.settings.allowPairs;
 
   // Players available for pairing
   // - Available players are those that are not paired or in the process of playing
@@ -39,18 +40,6 @@ const UserManagement: React.FC<UserManagementProps> = ({
   );
 
   // Update pair name when players are selected
-  useEffect(() => {
-    if (selectedPlayers.length === 2) {
-      const player1 = players.find((p) => p.id === selectedPlayers[0]);
-      const player2 = players.find((p) => p.id === selectedPlayers[1]);
-      if (player1 && player2) {
-        setPairName(`${player1.name} & ${player2.name}`);
-      }
-    } else {
-      setPairName("");
-    }
-  }, [selectedPlayers, players]);
-
   const handlePlayerSelect = (playerId: string) => {
     if (selectedPlayers.includes(playerId)) {
       setSelectedPlayers(selectedPlayers.filter((id) => id !== playerId));
@@ -63,26 +52,68 @@ const UserManagement: React.FC<UserManagementProps> = ({
     event.preventDefault();
 
     if (selectedPlayers.length === 2 && pairName.trim()) {
-      onCreatePair(selectedPlayers as [string, string], pairName.trim());
+      // assuming createPair function is defined somewhere in the context
+      // onCreatePair(selectedPlayers as [string, string], pairName.trim());
       setSelectedPlayers([]);
       setPairName("");
     }
   };
 
-  const handleCreatePlayer = (event: React.FormEvent) => {
-    event.preventDefault();
+  const handleAddPlayer = () => {
+    if (!newPlayerName.trim()) {
+      return;
+    }
 
+    const playersAwaitingNextGame = players.filter((player) =>
+      player.queueNumber.startsWith(
+        `${games.length.toString().padStart(3, "0")}-`,
+      ),
+    );
+
+    addPlayer({
+      id: uuid(),
+      name: newPlayerName.trim(),
+      status: "available",
+      index: players.length,
+      queueNumber: generateQueueNumber({
+        gameIndex: games.length + 1,
+        playerIndex: playersAwaitingNextGame.length + 1,
+      }),
+    });
+
+    setNewPlayerName("");
+  };
+
+  const handleEnterKeyUp = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleAddPlayer();
+    }
+  };
+
+  const handleAddPlayerSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
     if (newPlayerName.trim()) {
-      onCreatePlayer(newPlayerName.trim());
-      setNewPlayerName("");
+      handleAddPlayer();
     }
   };
 
   const createRandomPair = () => {
-    const randomPlayers = availablePlayersForPairing
+    if (availablePlayersForPairing.length < 2) {
+      console.warn("Not enough available players for pairing");
+      return;
+    }
+
+    // Randomly select two players from available players
+    const randomPlayers = [...availablePlayersForPairing]
       .sort(() => Math.random() - 0.5)
       .slice(0, 2);
+
+    // Set them as selected players for pairing
     setSelectedPlayers(randomPlayers.map((player) => player.id));
+
+    // Generate a default pair name using their names
+    const defaultPairName = randomPlayers.map((p) => p.name).join(" & ");
+    setPairName(defaultPairName);
   };
 
   if (!isOpen) return null;
@@ -125,18 +156,18 @@ const UserManagement: React.FC<UserManagementProps> = ({
             <div className="mb-4">
               <h3 className="mb-2 font-bold">Create New Pair</h3>
 
-              <form onSubmit={handleCreatePair} className="mb-4 flex gap-x-2">
+              <form onSubmit={handleCreatePair} className="mb-4 flex items-center space-x-2">
                 <input
                   type="text"
                   value={pairName}
                   onChange={(e) => setPairName(e.target.value)}
                   placeholder="Pair name"
-                  className="w-full flex-1 truncate rounded border p-2"
+                  className="flex-1 rounded border p-2"
+                  disabled={selectedPlayers.length !== 2}
                 />
-
                 <button
                   type="submit"
-                  title="Pair"
+                  title="Create Pair"
                   disabled={selectedPlayers.length !== 2 || !pairName.trim()}
                   className="flex w-min flex-shrink-0 items-center rounded bg-blue-500 px-2 disabled:bg-gray-200"
                 >
@@ -146,11 +177,13 @@ const UserManagement: React.FC<UserManagementProps> = ({
 
                 <button
                   type="button"
-                  title="Suggest"
-                  className="flex w-min flex-shrink-0 items-center rounded bg-gray-100 px-2"
+                  title="Random Pair"
+                  disabled={!isPairingEnabled || availablePlayersForPairing.length < 2}
+                  className="flex w-min flex-shrink-0 items-center rounded bg-gray-100 px-2 disabled:bg-gray-200"
                   onClick={createRandomPair}
                 >
                   <Dices size="1em" className="mr-2" />
+                  Random
                 </button>
               </form>
 
@@ -219,7 +252,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
                             ? "Cannot unpair players who are in a game"
                             : "Unpair"
                         }
-                        onClick={() => onDeletePair(pair.id)}
+                        onClick={() => deletePair(pair.id)}
                         disabled={isPlaying}
                         className={`ml-2 ${
                           isPlaying
@@ -236,17 +269,18 @@ const UserManagement: React.FC<UserManagementProps> = ({
             </div>
           </>
         ) : (
-          <div>
+          <>
             <div className="mb-4">
               <h3 className="mb-2 font-bold">Add New Player</h3>
 
-              <form onSubmit={handleCreatePlayer} className="flex space-x-2">
+              <form onSubmit={handleAddPlayerSubmit} className="flex space-x-2">
                 <input
                   type="text"
                   value={newPlayerName}
-                  onChange={(e) => setNewPlayerName(e.target.value)}
                   placeholder="Player name"
                   className="flex-1 rounded border p-2"
+                  onChange={(e) => setNewPlayerName(e.target.value)}
+                  onKeyUp={handleEnterKeyUp}
                 />
 
                 <button
@@ -285,7 +319,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
                     <div>
                       <button
                         title="Undelete"
-                        onClick={() => onUndeletePlayer(player.id)}
+                        onClick={() => undeletePlayer(player.id)}
                         disabled={player.status !== "retired"}
                         className={`group ml-2 ${
                           player.status !== "retired"
@@ -301,7 +335,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
 
                       <button
                         title="Delete"
-                        onClick={() => onDeletePlayer(player.id)}
+                        onClick={() => deletePlayer(player.id)}
                         disabled={player.status !== "available"}
                         className={`group ml-2 ${
                           player.status !== "available"
@@ -319,11 +353,11 @@ const UserManagement: React.FC<UserManagementProps> = ({
                 ))}
               </div>
             </div>
-          </div>
+          </>
         )}
       </div>
     </div>
   );
 };
 
-export default UserManagement;
+export default PlayerManagement;

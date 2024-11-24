@@ -34,6 +34,7 @@
     "postcss": "^8.4.35",
     "prettier": "^3.3.3",
     "prettier-plugin-tailwindcss": "0.6.8",
+    "react-scan": "^0.0.16",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.12.0",

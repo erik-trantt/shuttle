@@ -1,221 +1,66 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Users, LayoutGrid, Menu } from "lucide-react";
 import { v4 as uuid } from "uuid";
 import PlayerPool from "~/components/player/Pool";
 import CourtDisplay from "~/components/CourtDisplay";
-import PairManagement from "~/components/player/PlayerManagement";
-import { ConfigProvider } from "@contexts";
+import PlayerManagement from "~/components/player/PlayerManagement";
+import { ConfigProvider, PlayerProvider, CourtProvider } from "@contexts";
 import { useRuntimeConfig } from "@hooks";
-import {
-  buildInitialCourtData,
-  buildInitialPlayers,
-  generateQueueNumber,
-} from "@utils";
-import type { Court, CourtData, Game, Player, PlayerPair } from "@types";
-
-let initialPlayers: Player[] = [];
-let initialCourtData: CourtData = {};
-
-if (typeof window !== "undefined") {
-  initialPlayers = buildInitialPlayers();
-  initialCourtData = buildInitialCourtData();
-}
+import { usePlayer, useSelectedPlayers, useCourt } from "@contexts";
+import type { Game } from "@types";
+import { buildInitialCourtData, buildInitialPlayers } from "@utils";
 
 function App() {
-  const [courtData, setCourtData] = useState<CourtData>(initialCourtData);
-  const [games, setGames] = useState<Game[]>([]);
-  const [players, setPlayers] = useState<Player[]>(initialPlayers);
-  const [pairs, setPairs] = useState<PlayerPair[]>([]);
-  const [isPairManagementOpen, setIsPairManagementOpen] = useState(false);
+  return (
+    <ConfigProvider>
+      <CourtProvider>
+        <PlayerProvider>
+          <AppContent />
+        </PlayerProvider>
+      </CourtProvider>
+    </ConfigProvider>
+  );
+}
 
-  const [selectedPlayers, setSelectedPlayers] = useState<Player[]>([]);
-  const [nextCourt, setNextCourt] = useState<Court | null>(null);
-
+function AppContent() {
   const config = useRuntimeConfig();
+  const [isPairManagementOpen, setIsPairManagementOpen] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  const addPlayer = (name: string) => {
-    const basePlayer: Player = {
-      id: uuid(),
-      name,
-      status: "available",
-      index: 0,
-      queueNumber: generateQueueNumber({
-        gameIndex: games.length,
-        playerIndex: 0,
-      }),
-    };
+  // Player context
+  const { setPlayers } = usePlayer();
+  const selectedPlayers = useSelectedPlayers();
 
-    if (!players.length) {
-      setPlayers([basePlayer]);
-    }
+  // Court context
+  const {
+    courtData,
+    startGame: startGameOnCourt,
+    endGame: endGameOnCourt,
+    toggleLock,
+    getNextAvailableCourt,
+    addCourt,
+  } = useCourt();
 
-    const foundPlayer: Player | undefined = players.find(
-      (player) => player.name === name,
-    );
+  // Initialize players and courts
+  useEffect(() => {
+    if (!isInitialized) {
+      // Initialize players
+      setPlayers(buildInitialPlayers());
 
-    if (!foundPlayer) {
-      basePlayer.index = players.length;
-      basePlayer.queueNumber = generateQueueNumber({
-        gameIndex: games.length + 1,
-        playerIndex: players.length,
+      // Initialize courts
+      Object.values(buildInitialCourtData()).forEach((courtItem) => {
+        addCourt(courtItem.court);
       });
 
-      setPlayers([...players, basePlayer]);
+      setIsInitialized(true);
     }
-  };
+  }, [isInitialized, setPlayers, addCourt]);
 
-  const handleCreatePair = (playerIds: [string, string], name: string) => {
-    // Only allow pairing available players
-    const playersToPair = players.filter((p) => playerIds.includes(p.id));
-    if (playersToPair.some((p) => p.status !== "available")) {
-      console.warn("Cannot pair players who are not available");
-      return;
-    }
+  const nextCourt = getNextAvailableCourt();
 
-    const newPair: PlayerPair = {
-      id: uuid(),
-      playerIds,
-      name,
-      createdAt: Date.now(),
-    };
-    setPairs([...pairs, newPair]);
-
-    // Update players with their partner IDs
-    setPlayers(
-      players.map((player) => {
-        if (player.id === playerIds[0]) {
-          return { ...player, partnerId: playerIds[1] };
-        }
-        if (player.id === playerIds[1]) {
-          return { ...player, partnerId: playerIds[0] };
-        }
-        return player;
-      }),
-    );
-  };
-
-  const handleDeletePair = (pairId: string) => {
-    const pairToDelete = pairs.find((pair) => pair.id === pairId);
-    if (!pairToDelete) return;
-
-    // Only allow unpairing if neither player is currently playing
-    const pairedPlayers = players.filter((p) =>
-      pairToDelete.playerIds.includes(p.id),
-    );
-    if (pairedPlayers.some((p) => p.status === "playing")) {
-      console.warn("Cannot unpair players who are currently in a game");
-      return;
-    }
-
-    setPairs(pairs.filter((pair) => pair.id !== pairId));
-
-    // Remove partner IDs when pair is deleted
-    setPlayers(
-      players.map((player) => {
-        if (pairToDelete.playerIds.includes(player.id)) {
-          return { ...player, partnerId: undefined };
-        }
-        return player;
-      }),
-    );
-  };
-
-  const handleDeletePlayer = (id: string) => {
-    const playerToDelete = players.find((p) => p.id === id);
-    if (!playerToDelete) return;
-
-    // Don't allow deleting players who are currently playing
-    if (playerToDelete.status === "playing") {
-      console.warn("Cannot delete a player who is currently in a game");
-      return;
-    }
-
-    // Remove player from any pair they're in
-    const pairsWithPlayer = pairs.filter((pair) => pair.playerIds.includes(id));
-    pairsWithPlayer.forEach((pair) => handleDeletePair(pair.id));
-
-    // Remove player from selected player list if it's there
-    setSelectedPlayers(
-      selectedPlayers.filter((selectedPlayer) => selectedPlayer.id !== id),
-    );
-
-    // Mark player as retired instead of removing them
-    setPlayers(
-      players.map((player) =>
-        player.id === id ? { ...player, status: "retired" } : player,
-      ),
-    );
-  };
-
-  const handleUndeletePlayer = (id: string) => {
-    setPlayers(
-      players.map((player) =>
-        player.id === id ? { ...player, status: "available" } : player,
-      ),
-    );
-  };
-
-  const selectPlayer = (player: Player) => {
-    const isAutoSelected = selectedPlayers
-      .slice(0, config.game.getAutoSelectionSize())
-      .some((selectedPlayer) => selectedPlayer.id === player.id);
-
-    if (isAutoSelected) {
-      return;
-    }
-
-    // Find if player is part of a pair
-    const playerPair = pairs.find((pair) => pair.playerIds.includes(player.id));
-
-    const isSelected = selectedPlayers.some(
-      (selectedPlayer) => selectedPlayer.id === player.id,
-    );
-
-    if (isSelected) {
-      // If player is part of a pair, remove both players
-      if (playerPair) {
-        setSelectedPlayers(
-          selectedPlayers.filter(
-            (selectedPlayer) =>
-              !playerPair.playerIds.includes(selectedPlayer.id),
-          ),
-        );
-      } else {
-        // Remove single player
-        setSelectedPlayers(
-          selectedPlayers.filter(
-            (selectedPlayer) => selectedPlayer.id !== player.id,
-          ),
-        );
-      }
-    } else if (selectedPlayers.length < config.game.settings.playerNumber) {
-      if (playerPair) {
-        // If adding a paired player would exceed player limit, don't add
-        if (selectedPlayers.length + 2 > config.game.settings.playerNumber) {
-          return;
-        }
-        // Add both players from the pair
-        const pairedPlayers = players.filter((p) =>
-          playerPair.playerIds.includes(p.id),
-        );
-        setSelectedPlayers([...selectedPlayers, ...pairedPlayers]);
-      } else {
-        // Add single player
-        setSelectedPlayers([...selectedPlayers, player]);
-      }
-    }
-  };
-
-  const selectPlayers = (playersToSelect: Player[]) => {
-    setSelectedPlayers(playersToSelect);
-  };
-
-  /**
-   * Start a game with the selected players.
-   */
-  const startGame = () => {
-    if (selectedPlayers.length !== 4) {
-      console.log("Not enough player. Do nothing");
+  const handleStartGame = useCallback(() => {
+    if (selectedPlayers.length !== config.game.settings.playerNumber) {
+      console.log("Not enough players. Do nothing");
       return;
     }
 
@@ -239,119 +84,20 @@ function App() {
         playerIds: selectedPlayerIds.slice(2, 4),
         score: 0,
       },
-      index: games.length + 1,
+      index: Object.values(courtData).filter((data) => data.gameId).length + 1,
       timestamp: Date.now(),
     };
 
-    const playersToStartGame = [...selectedPlayers];
-    const updatedPlayers = [...players];
-
-    playersToStartGame.forEach(({ index: playerIndex }) => {
-      const foundPlayer = updatedPlayers[playerIndex];
-      if (!foundPlayer) return;
-      foundPlayer.status = "playing";
-    });
-
-    setPlayers(updatedPlayers);
-
-    const courtToStartGame: CourtData = {
-      [nextCourt.id]: {
-        court: { ...nextCourt, status: "playing" },
-        gameId: newGame.id,
-        game: newGame,
-        players: playersToStartGame,
-      },
-    };
-    setCourtData((oldCourtData) => ({
-      ...oldCourtData,
-      ...courtToStartGame,
-    }));
-
-    setGames((oldGames) => [...oldGames, newGame]);
-    setSelectedPlayers([]);
-  };
-
-  const releaseCourt = (courtId: string) => {
-    const foundCourtData: CourtData[0] | undefined = courtData[courtId];
-
-    if (!foundCourtData) {
-      console.warn("Court is not found to be released.");
-      return;
-    }
-
-    const availablePlayers = players.filter(
-      (player) =>
-        player.status === "available" &&
-        player.queueNumber.startsWith(
-          (games.length + 1).toString().padStart(3, "0"),
-        ),
-    );
-
-    const playersToRelease = [...foundCourtData.players];
-    const updatedPlayers = [...players];
-
-    playersToRelease.forEach(({ index: playerIndex }, playerToReleaseIndex) => {
-      const foundPlayer = updatedPlayers[playerIndex];
-      if (!foundPlayer) return;
-
-      foundPlayer.status = "available";
-      foundPlayer.queueNumber = generateQueueNumber({
-        gameIndex: games.length + 1,
-        playerIndex: availablePlayers.length + playerToReleaseIndex,
-      });
-    });
-
-    setPlayers(updatedPlayers);
-
-    const courtToRelease: CourtData = {
-      [foundCourtData.court.id]: {
-        court: { ...foundCourtData.court, status: "available" },
-        gameId: undefined,
-        game: undefined,
-        players: [],
-      },
-    };
-    setCourtData((oldCourtData) => ({
-      ...oldCourtData,
-      ...courtToRelease,
-    }));
-  };
-
-  const toggleCourtLock = (courtId: string) => {
-    const foundCourtData = courtData[courtId];
-    if (!foundCourtData) return;
-
-    const updatedCourtData: CourtData = {
-      [courtId]: {
-        ...foundCourtData,
-        court: {
-          ...foundCourtData.court,
-          locked: !foundCourtData.court.locked,
-          status: foundCourtData.court.locked ? "available" : "unavailable",
-        },
-      },
-    };
-
-    setCourtData((prevData) => ({
-      ...prevData,
-      ...updatedCourtData,
-    }));
-  };
-
-  useEffect(() => {
-    const nextAvailableCourtsData = Object.values(courtData)
-      .filter(({ court }) => court.status === "available" && !court.locked)
-      .sort(
-        (courtDataA, courtDataB) =>
-          courtDataA.court.index - courtDataB.court.index,
-      );
-
-    if (!nextAvailableCourtsData.length) {
-      setNextCourt(null);
-    } else {
-      setNextCourt({ ...nextAvailableCourtsData[0].court });
-    }
-  }, [courtData, games]);
+    startGameOnCourt(nextCourt.id, newGame, selectedPlayers);
+    setPlayers([]);
+  }, [
+    selectedPlayers,
+    nextCourt,
+    courtData,
+    config.game.settings.playerNumber,
+    startGameOnCourt,
+    setPlayers,
+  ]);
 
   return (
     <div className="min-h-screen bg-gray-100 px-4 py-4 sm:px-8">
@@ -372,23 +118,16 @@ function App() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-6xl space-y-4">
+      <main className="mx-auto max-w-6xl space-y-4">
         <section className="rounded-lg bg-white p-4 shadow-md lg:p-6">
           <h2 className="mb-4 flex items-center text-sm font-bold sm:text-xl">
             <Users size="1em" className="mr-2" /> Player Pool
           </h2>
 
-          <ConfigProvider>
-            <PlayerPool
-              players={players}
-              pairs={pairs}
-              nextCourtAvailable={nextCourt !== null}
-              selectPlayer={selectPlayer}
-              selectPlayers={selectPlayers}
-              selectedPlayers={selectedPlayers}
-              startGame={startGame}
-            />
-          </ConfigProvider>
+          <PlayerPool
+            nextCourtAvailable={!!nextCourt}
+            startGame={handleStartGame}
+          />
         </section>
 
         <section className="rounded-lg bg-white p-4 shadow-md lg:p-6">
@@ -398,22 +137,15 @@ function App() {
 
           <CourtDisplay
             courtData={courtData}
-            releaseCourt={releaseCourt}
-            toggleCourtLock={toggleCourtLock}
+            onEndGame={endGameOnCourt}
+            onToggleLock={toggleLock}
           />
         </section>
-      </div>
+      </main>
 
-      <PairManagement
+      <PlayerManagement
         isOpen={isPairManagementOpen}
         onClose={() => setIsPairManagementOpen(false)}
-        players={players}
-        pairs={pairs}
-        onCreatePair={handleCreatePair}
-        onDeletePair={handleDeletePair}
-        onCreatePlayer={addPlayer}
-        onDeletePlayer={handleDeletePlayer}
-        onUndeletePlayer={handleUndeletePlayer}
       />
     </div>
   );
