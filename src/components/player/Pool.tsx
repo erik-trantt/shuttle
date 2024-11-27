@@ -195,9 +195,7 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
 
         // If no pairs selected or pairs not allowed, use random players
         if (candidates.length === 0) {
-          candidates = remainingPlayers
-            .sort(() => Math.random() - 0.5)
-            .slice(0, suggestionSize);
+          candidates = remainingPlayers.slice(0, suggestionSize);
         }
       }
 
