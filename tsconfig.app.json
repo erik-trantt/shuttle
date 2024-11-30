@@ -21,6 +21,7 @@
       "@configs": ["./src/configs/index"],
       "@contexts": ["./src/contexts/index"],
       "@hooks": ["./src/hooks/index"],
+      "@stores": ["./src/stores/index"],
       "@types": ["./src/types/index"],
       "@utils": ["./src/utils/index"],
       "~/*": ["./src/*"],

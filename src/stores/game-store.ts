@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { usePlayerStore } from "./player-store";
-import { buildInitialCourtData } from "@utils";
+import { usePairStore } from "./pair-store";
+import { buildInitialCourtData, COURT_IDS, generateUniqueId } from "@utils";
 import type { Court, CourtData, Game, Player } from "@types";
 
 /**
@@ -24,7 +25,7 @@ interface GameSettings {
 }
 
 /**
- * State and actions interface for game management
+ * State interface for game management
  *
  * This interface defines the structure of the game state, including settings, games, court data, and actions for updating the state.
  */
@@ -38,17 +39,18 @@ interface GameState {
    */
   games: Game[];
   /**
-   * Current state of all courts
+   * Data for all courts
    */
   courtData: CourtData;
   /**
    * Next court to be used
    */
   nextCourt: Court | null;
+
   /**
-   * Whether the next court is available
+   * Current auto-selection size
    */
-  nextCourtAvailable: boolean;
+  autoSelectionSize: number;
 
   /**
    * Sets the availability of the next court
@@ -57,10 +59,15 @@ interface GameState {
    *
    * @param available Whether the next court is available
    */
-  setNextCourtAvailable: (available: boolean) => void;
+  // setNextCourtAvailable: (available: boolean) => void;
 
   /**
-   * Sets the next court to be used
+   * Returns whether there is a next court
+   */
+  hasNextCourt: () => boolean;
+
+  /**
+   * Sets the next court
    *
    * This action is used when selecting a court for the next game.
    *
@@ -78,7 +85,7 @@ interface GameState {
   updateSettings: (settings: Partial<GameSettings>) => void;
 
   /**
-   * Updates court data for a specific court
+   * Updates court data
    *
    * This action can update court status, current game, and player list.
    * It also validates court status transitions.
@@ -114,7 +121,7 @@ interface GameState {
   canStartGame: () => boolean;
 
   /**
-   * Adds a new game to the games list
+   * Adds a new game
    *
    * This action is used for game history.
    *
@@ -132,13 +139,52 @@ interface GameState {
   getGameCount: () => number;
 
   /**
-   * Releases a court after game completion
+   * Gets the current auto-selection size
+   *
+   * @returns The current auto-selection size
+   */
+  getAutoSelectionSize: () => number;
+
+  /**
+   * Sets the auto-selection size
+   *
+   * @param size The new auto-selection size
+   */
+  setAutoSelectionSize: (size: number) => void;
+
+  /**
+   * Auto-selects players for the next game
+   *
+   * This action intelligently selects players based on game settings and pair status.
+   *
+   * @param suggestionSize Number of players to auto-select
+   */
+  autoSelectPlayers: (suggestionSize: number) => void;
+
+  /**
+   * Suggests players for the next game
+   *
+   * This action handles the initial player selection for a new game.
+   */
+  suggestPlayers: () => void;
+
+  /**
+   * Releases a court
    *
    * This action updates court status to available, clears game data, updates player statuses, and updates player queue numbers.
    *
    * @param courtId ID of the court to release
    */
   releaseCourt: (courtId: string) => void;
+
+  /**
+   * Toggles the lock status of a court
+   *
+   * This action toggles the lock status of a court and updates the court status accordingly.
+   *
+   * @param courtId ID of the court to toggle
+   */
+  toggleCourtLock: (courtId: string) => void;
 
   /**
    * Initializes the game store
@@ -158,50 +204,33 @@ export const useGameStore = create<GameState>((set, get) => ({
   settings: {
     playerNumber: 4,
     allowPairs: true,
-    autoSelectionSize: 4,
+    autoSelectionSize: 2,
   },
   games: [],
   courtData: initialCourtData,
   nextCourt: null,
-  nextCourtAvailable: true,
+  autoSelectionSize: 2,
 
-  /**
-   * Initializes the game store by building initial court data.
-   */
   initialize: () => {
-    set({ courtData: buildInitialCourtData() });
+    const initialCourtData = buildInitialCourtData();
+
+    const nextCourt = initialCourtData[COURT_IDS[0]]?.court || null;
+
+    set({
+      courtData: initialCourtData,
+      nextCourt,
+    });
   },
 
-  /**
-   * Sets the availability of the next court.
-   *
-   * @param available Whether the next court is available
-   */
-  setNextCourtAvailable: (available) => set({ nextCourtAvailable: available }),
+  hasNextCourt: () => !!get().nextCourt,
 
-  /**
-   * Sets the next court to be used.
-   *
-   * @param court The next court to be used
-   */
   setNextCourt: (court) => set({ nextCourt: court }),
 
-  /**
-   * Updates game settings.
-   *
-   * @param newSettings Partial game settings to update
-   */
   updateSettings: (newSettings) =>
     set((state) => ({
       settings: { ...state.settings, ...newSettings },
     })),
 
-  /**
-   * Updates court data for a specific court.
-   *
-   * @param courtId ID of the court to update
-   * @param data Partial court data to update
-   */
   updateCourtData: (courtId, data) => {
     set((state) => {
       const currentCourtData = state.courtData[courtId];
@@ -211,7 +240,6 @@ export const useGameStore = create<GameState>((set, get) => ({
         return state;
       }
 
-      // Merge court data while preserving required fields
       const updatedCourtData = {
         [courtId]: {
           court: data.court
@@ -227,6 +255,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       // Validate court status transition
       const newStatus = updatedCourtData[courtId].court.status;
       const oldStatus = currentCourtData.court.status;
+
       const validTransition =
         newStatus === oldStatus ||
         (oldStatus === "available" && newStatus === "playing") ||
@@ -249,16 +278,16 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
   },
 
-  /**
-   * Starts a new game.
-   */
   startGame: () => {
     const { selectedPlayers } = usePlayerStore.getState();
     const { nextCourt, games } = get();
 
-    if (!nextCourt) return;
+    if (!nextCourt || !get().canStartGame()) {
+      console.warn("Cannot start game: conditions not met");
+      return;
+    }
 
-    const gameId = crypto.randomUUID();
+    const gameId = generateUniqueId();
 
     // Create new game
     const newGame: Game = {
@@ -282,88 +311,178 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
 
     // Update court data
-    const updatedCourtData: CourtData = {
-      [nextCourt.id]: {
-        court: { ...nextCourt, status: "playing" },
-        players: selectedPlayers,
-        gameId,
-        game: newGame,
-      },
-    };
+    get().updateCourtData(nextCourt.id, {
+      court: { status: "playing" },
+      gameId,
+      game: newGame,
+      players: selectedPlayers,
+    });
 
-    set((state) => ({
-      nextCourtAvailable: false,
-      nextCourt: null,
-      courtData: { ...state.courtData, ...updatedCourtData },
-      games: [...state.games, newGame],
-    }));
+    // Add game to history
+    get().addGame(newGame);
+
+    // Reset selection state
+    usePlayerStore.getState().selectPlayers([]);
+    set({ nextCourt: null });
   },
 
-  /**
-   * Checks if a game can be started.
-   *
-   * @returns Whether a game can be started
-   */
   canStartGame: () => {
-    const { settings, nextCourtAvailable } = get();
+    const { settings, hasNextCourt } = get();
     const { selectedPlayers } = usePlayerStore.getState();
-    return (
-      selectedPlayers.length === settings.playerNumber && nextCourtAvailable
-    );
+    return selectedPlayers.length === settings.playerNumber && hasNextCourt();
   },
 
-  /**
-   * Adds a new game to the games list.
-   *
-   * @param game The new game to add
-   */
   addGame: (game) => set((state) => ({ games: [...state.games, game] })),
 
-  /**
-   * Gets the total number of games played.
-   *
-   * @returns The total number of games played
-   */
   getGameCount: () => get().games.length,
 
-  /**
-   * Releases a court after game completion.
-   *
-   * @param courtId ID of the court to release
-   */
+  getAutoSelectionSize: () => get().autoSelectionSize,
+
+  setAutoSelectionSize: (size) => set({ autoSelectionSize: size }),
+
+  autoSelectPlayers: (suggestionSize: number) => {
+    const { selectedPlayers, getSortedAvailablePlayers: getAvailablePlayers } =
+      usePlayerStore.getState();
+    const { getPairedPlayer } = usePairStore.getState();
+    const { settings } = get();
+
+    if (selectedPlayers.length >= settings.playerNumber) {
+      return;
+    }
+
+    // Get remaining players (excluding already selected)
+    const remainingPlayers = getAvailablePlayers().filter(
+      (p) => !selectedPlayers.some((selected) => selected.id === p.id),
+    );
+
+    // Check if initial player is paired
+    const initialPlayer =
+      selectedPlayers.length > 0 ? selectedPlayers[0] : null;
+    const isInitialPaired =
+      initialPlayer && getPairedPlayer(initialPlayer.id) !== null;
+
+    // Prepare pool of candidates based on initial player's pair status
+    let candidates: Player[] = [];
+    if (isInitialPaired) {
+      // If initial player is paired, look for another pair first
+      const pairs = remainingPlayers.filter((p) => getPairedPlayer(p.id));
+      const singles = remainingPlayers.filter((p) => !getPairedPlayer(p.id));
+
+      if (pairs.length >= 2) {
+        // Try to find a complete pair
+        const firstPairPlayer = pairs[0];
+        const secondPairPlayer = getPairedPlayer(firstPairPlayer.id);
+        if (secondPairPlayer) {
+          candidates = [firstPairPlayer, secondPairPlayer];
+        }
+      }
+
+      // If no pairs available, use singles
+      if (candidates.length === 0 && singles.length >= 2) {
+        candidates = singles.slice(0, 2);
+      }
+    } else {
+      // For non-paired initial player, follow game settings
+      if (settings.allowPairs) {
+        // Try to find a pair first
+        const pairs = remainingPlayers.filter((p) => getPairedPlayer(p.id));
+        if (pairs.length >= 2) {
+          const firstPairPlayer = pairs[0];
+          const secondPairPlayer = getPairedPlayer(firstPairPlayer.id);
+          if (secondPairPlayer) {
+            candidates = [firstPairPlayer, secondPairPlayer];
+          }
+        }
+      }
+
+      // If no pairs selected or pairs not allowed, use random players
+      if (candidates.length === 0) {
+        candidates = remainingPlayers.slice(0, suggestionSize);
+      }
+    }
+
+    usePlayerStore
+      .getState()
+      .selectPlayers([...selectedPlayers, ...candidates]);
+  },
+
+  suggestPlayers: () => {
+    const { getSortedAvailablePlayers: getAvailablePlayers } =
+      usePlayerStore.getState();
+    const { getInitialSelection } = usePairStore.getState();
+    const { settings } = get();
+
+    if (getAvailablePlayers().length < settings.playerNumber) {
+      console.error(
+        "Not enough available players for suggestion",
+        getAvailablePlayers().length,
+      );
+      return;
+    }
+
+    // Get initial selection
+    const initialSelection = getInitialSelection(1);
+    const remainingNeeded = settings.playerNumber - initialSelection.length;
+
+    // Auto-select remaining players
+    if (remainingNeeded > 0) {
+      usePlayerStore.getState().selectPlayers(initialSelection);
+      get().autoSelectPlayers(remainingNeeded);
+    } else {
+      usePlayerStore.getState().selectPlayers(initialSelection);
+    }
+  },
+
   releaseCourt: (courtId: string) => {
     const { courtData } = get();
-    const foundCourtData = courtData[courtId];
+    const foundCourtData: CourtData[0] | undefined = courtData[courtId];
 
     if (!foundCourtData) {
       console.warn("Court is not found to be released.");
       return;
     }
 
-    const updatedCourtData: CourtData = {
-      [courtId]: {
-        court: { ...foundCourtData.court, status: "available" },
-        players: [],
-        gameId: undefined,
-        game: undefined,
+    const lastQueuedAvailablePlayers = usePlayerStore
+      .getState()
+      .getLastQueuedAvailablePlayers();
+
+    const playersToRelease = [...foundCourtData.players];
+
+    // Update player statuses and queue numbers
+    playersToRelease.forEach((player, playerToReleaseIndex) => {
+      usePlayerStore.getState().updateQueueNumber(player.id, {
+        gameIndex: get().games.length + 1,
+        playerIndex: lastQueuedAvailablePlayers.length + playerToReleaseIndex,
+      });
+      usePlayerStore.getState().updatePlayerStatus(player.id, "available");
+    });
+
+    // Update court data
+    get().updateCourtData(courtId, {
+      court: { status: "available" },
+      gameId: undefined,
+      game: undefined,
+      players: [],
+    });
+  },
+
+  toggleCourtLock: (courtId: string) => {
+    const { courtData } = get();
+    const foundCourt = courtData[courtId];
+
+    if (!foundCourt) {
+      return;
+    }
+
+    const updatedCourt: CourtData[0] = {
+      ...foundCourt,
+      court: {
+        ...foundCourt.court,
+        locked: !foundCourt.court.locked,
+        status: foundCourt.court.locked ? "available" : "unavailable",
       },
     };
 
-    set((state) => ({
-      courtData: { ...state.courtData, ...updatedCourtData },
-    }));
-
-    // Update player statuses and queue numbers
-    const playerStore = usePlayerStore.getState();
-    const gameCount = get().games.length;
-    const availablePlayers = playerStore.getAvailablePlayers();
-
-    foundCourtData.players.forEach(({ id }, index) => {
-      playerStore.updatePlayerStatus(id, "available");
-      playerStore.updateQueueNumber(id, {
-        gameIndex: gameCount + 1,
-        playerIndex: availablePlayers.length + index,
-      });
-    });
+    get().updateCourtData(courtId, updatedCourt);
   },
 }));

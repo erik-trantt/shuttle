@@ -1,3 +1,5 @@
+import { v4 as uuidv4 } from "uuid";
+
 /**
  * Generate a string to present a queuing number comprising 3 elements:
  * - Current game number; 1-3 characters
@@ -54,6 +56,26 @@ export function generateQueueNumber(options: {
 export function parseQueueNumberToOrder(queueNumber: string): string {
   const orderParts = queueNumber.split("-");
   return orderParts.join("");
+}
+
+/**
+ * Generates a UUID using Crypto.randomUUID function.
+ * If Crypto.randomUUID is not available, use uuid v4.
+ */
+export function generateUniqueId() {
+  try {
+    if (
+      typeof crypto !== "undefined" &&
+      typeof crypto.randomUUID === "function"
+    ) {
+      return crypto.randomUUID();
+    }
+
+    return uuidv4();
+  } catch {
+    // If crypto fails for any reason, use uuid v4
+    return uuidv4();
+  }
 }
 
 export * from "./setup";

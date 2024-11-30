@@ -1,221 +1,223 @@
-import { v4 as uuid } from "uuid";
 import { create } from "zustand";
-import type { PlayerPair } from "@types";
 import { usePlayerStore } from "./player-store";
+import type { Player, PlayerPair } from "@types";
+import { useGameStore } from "@stores";
+import { generateUniqueId } from "@utils";
 
-/**
- * State interface for player pairs
- *
- * This interface defines the structure of the pair state.
- */
 interface PairState {
   /**
-   * List of active player pairs
-   *
-   * This array stores all the active player pairs.
+   * List of all player pairs
    */
   pairs: PlayerPair[];
-}
 
-/**
- * Actions interface for managing player pairs
- *
- * This interface defines the actions that can be performed on player pairs.
- */
-interface PairActions {
   /**
-   * Creates a new player pair
+   * Creates a new pair
    *
-   * This action creates a new player pair with the given player IDs and name.
-   * It first validates the pair using the validatePair action, then creates a new pair with a unique ID and timestamp.
-   * Finally, it updates the player partner references.
-   *
-   * @param playerIds The IDs of the two players to pair.
-   * @param name The name of the pair.
+   * @param pairName Pair name
+   * @param firstPlayerId First player ID
+   * @param secondPlayerId Second player ID
    */
-  createPair: (playerIds: [string, string], name: string) => void;
+  createPair: (
+    pairName: string,
+    firstPlayerId: string,
+    secondPlayerId: string,
+  ) => void;
 
   /**
-   * Removes a player pair
+   * Deletes a pair
    *
-   * This action removes a player pair with the given ID.
-   * It first clears the partner references for both players, then removes the pair from the pairs list.
-   *
-   * @param pairId The ID of the pair to remove.
+   * @param pairId Pair ID to delete
    */
   deletePair: (pairId: string) => void;
 
   /**
-   * Gets the paired player ID for a given player
+   * Gets a player's paired partner
    *
-   * This action returns the ID of the player paired with the given player.
-   * If the player is not in a pair, it returns null.
-   *
-   * @param playerId The ID of the player to find the pair for.
-   * @returns The ID of the paired player, or null if not in a pair.
+   * @param playerId Player ID to find partner for
+   * @returns The paired player or null if not paired
    */
-  getPairedPlayer: (playerId: string) => string | null;
+  getPairedPlayer: (playerId: string) => Player | null;
 
   /**
-   * Validates if two players can be paired
+   * Gets initial selection for game
    *
-   * This action checks if two players can be paired.
-   * It checks if both players exist and are available, and if neither player is already in a pair.
-   *
-   * @param playerIds The IDs of the two players to validate.
-   * @returns True if the players can be paired, false otherwise.
+   * @param size Number of players to select
+   * @returns List of initially selected players
    */
-  validatePair: (playerIds: [string, string]) => boolean;
+  getInitialSelection: (size: number) => Player[];
 
   /**
-   * Updates player partner references
+   * Checks if two players can be paired
    *
-   * This action updates the partner references for two players.
-   * It updates the first player's partner ID, and if the second player exists, it updates their partner ID as well.
-   * If the second ID is null, it handles the unpair operation.
-   *
-   * @param playerIds The IDs of the two players to update.
+   * @param firstPlayerId First player ID
+   * @param secondPlayerId Second player ID
+   * @returns Whether the players can be paired
    */
-  updatePlayerPartners: (playerIds: [string, string | null]) => void;
+  canPairPlayers: (firstPlayerId: string, secondPlayerId: string) => boolean;
+
+  /**
+   * Validates player selection based on game settings and pair status
+   *
+   * @param players Players to validate
+   * @returns Whether the selection is valid
+   */
+  validatePlayerSelection: (players: Player[]) => boolean;
+
+  /**
+   * Gets all pairs
+   *
+   * @returns List of all pairs
+   */
+  getPairs: () => PlayerPair[];
 }
 
-/**
- * Type alias for the pair store
- *
- * This type alias combines the PairState and PairActions interfaces.
- */
-type UsePairStore = PairState & PairActions;
-
-/**
- * Creates the pair store
- *
- * This function creates the pair store using the create function from zustand.
- * It initializes the pairs array and defines the actions for managing player pairs.
- */
-export const usePairStore = create<UsePairStore>((set, get) => ({
+export const usePairStore = create<PairState>((set, get) => ({
   pairs: [],
 
-  /**
-   * Validates if two players can be paired
-   *
-   * This action checks if two players can be paired.
-   * It checks if both players exist and are available, and if neither player is already in a pair.
-   *
-   * @param playerIds The IDs of the two players to validate.
-   * @returns True if the players can be paired, false otherwise.
-   */
-  validatePair: (playerIds) => {
-    const playerStore = usePlayerStore.getState();
-    const players = playerStore.players;
-
-    // Check if both players exist and are available
-    const validPlayers = playerIds.every((id) => {
-      const player = players.find((p) => p.id === id);
-      return player && player.status === "available";
-    });
-
-    // Check if neither player is already in a pair
-    const notPaired = playerIds.every((id) => !get().getPairedPlayer(id));
-
-    return validPlayers && notPaired;
-  },
-
-  /**
-   * Creates a new player pair
-   *
-   * This action creates a new player pair with the given player IDs and name.
-   * It first validates the pair using the validatePair action, then creates a new pair with a unique ID and timestamp.
-   * Finally, it updates the player partner references.
-   *
-   * @param playerIds The IDs of the two players to pair.
-   * @param name The name of the pair.
-   */
-  createPair: (playerIds, name) => {
-    if (!get().validatePair(playerIds)) return;
-
-    set((state) => ({
-      pairs: [
-        ...state.pairs,
-        {
-          id: uuid(),
-          playerIds,
-          name,
-          createdAt: Date.now(),
-        },
-      ],
-    }));
-
-    get().updatePlayerPartners(playerIds);
-  },
-
-  /**
-   * Removes a player pair
-   *
-   * This action removes a player pair with the given ID.
-   * It first clears the partner references for both players, then removes the pair from the pairs list.
-   *
-   * @param pairId The ID of the pair to remove.
-   */
-  deletePair: (pairId) => {
-    const pair = get().pairs.find((p) => p.id === pairId);
-    if (!pair) return;
-
-    // Clear partner IDs before removing pair
-    get().updatePlayerPartners([pair.playerIds[0], null]);
-    get().updatePlayerPartners([pair.playerIds[1], null]);
-
-    set((state) => ({
-      pairs: state.pairs.filter((pair) => pair.id !== pairId),
-    }));
-  },
-
-  /**
-   * Gets the paired player ID for a given player
-   *
-   * This action returns the ID of the player paired with the given player.
-   * If the player is not in a pair, it returns null.
-   *
-   * @param playerId The ID of the player to find the pair for.
-   * @returns The ID of the paired player, or null if not in a pair.
-   */
-  getPairedPlayer: (playerId) => {
-    const { pairs } = get();
-    const pair = pairs.find((p) => p.playerIds.includes(playerId));
-    if (!pair) return null;
-    return pair.playerIds.find((id) => id !== playerId) || null;
-  },
-
-  /**
-   * Updates player partner references
-   *
-   * This action updates the partner references for two players.
-   * It updates the first player's partner ID, and if the second player exists, it updates their partner ID as well.
-   * If the second ID is null, it handles the unpair operation.
-   *
-   * @param playerIds The IDs of the two players to update.
-   */
-  updatePlayerPartners: (playerIds) => {
-    const [playerId1, playerId2] = playerIds;
-    const playerStore = usePlayerStore.getState();
-
-    // Find the players to update
-    const player1 = playerStore.players.find((p) => p.id === playerId1);
-
-    // Update first player
-    if (player1) {
-      playerStore.updatePlayer({
-        ...player1,
-        partnerId: playerId2 || undefined,
-      });
+  createPair: (pairName, firstPlayerId, secondPlayerId) => {
+    if (!get().canPairPlayers(firstPlayerId, secondPlayerId)) {
+      console.warn("Cannot pair players");
+      return;
     }
 
-    // Update second player if it exists
-    if (playerId2) {
-      const player2 = playerStore.players.find((p) => p.id === playerId2);
+    const newPair: PlayerPair = {
+      id: generateUniqueId(),
+      playerIds: [firstPlayerId, secondPlayerId],
+      createdAt: Date.now(),
+      name: pairName,
+    };
 
-      if (player2) {
-        playerStore.updatePlayer({ ...player2, partnerId: playerId1 });
+    set((state) => ({
+      pairs: [...state.pairs, newPair],
+    }));
+  },
+
+  deletePair: (pairId) => {
+    set((state) => ({
+      pairs: state.pairs.filter((p) => p.id !== pairId),
+    }));
+  },
+
+  getPairedPlayer: (playerId) => {
+    const { pairs } = get();
+    const { players } = usePlayerStore.getState();
+
+    const pair = pairs.find((p) => p.playerIds.includes(playerId));
+
+    if (!pair) return null;
+
+    const partnerId =
+      pair.playerIds[0] === playerId ? pair.playerIds[1] : pair.playerIds[0];
+
+    return players.find((p) => p.id === partnerId) || null;
+  },
+
+  validatePlayerSelection: (players) => {
+    const { settings } = useGameStore.getState();
+    const { getPairedPlayer } = get();
+
+    // Check if selection size matches required player number
+    if (players.length > settings.playerNumber) {
+      return false;
+    }
+
+    // If no players selected, that's valid
+    if (players.length === 0) {
+      return true;
+    }
+
+    // Check if initial player is paired
+    const initialPlayer = players[0];
+    const isInitialPaired = getPairedPlayer(initialPlayer.id) !== null;
+
+    // Get paired and single players
+    const pairedPlayers = players.filter((player) =>
+      getPairedPlayer(player.id),
+    );
+    const singlePlayers = players.filter(
+      (player) => !getPairedPlayer(player.id),
+    );
+
+    if (isInitialPaired) {
+      // When initial player is paired, enforce paired double format
+      // Must have either 2 pairs (4 paired players) or 1 pair + 2 singles
+      return (
+        (pairedPlayers.length === 4 && singlePlayers.length === 0) ||
+        (pairedPlayers.length === 2 && singlePlayers.length === 2)
+      );
+    } else {
+      // For regular format, follow game settings
+      if (settings.allowPairs) {
+        // Allow mix of pairs and singles
+        return (
+          (pairedPlayers.length === 2 && singlePlayers.length === 2) ||
+          (pairedPlayers.length === 0 && singlePlayers.length === 4)
+        );
+      } else {
+        // No pairs allowed
+        return pairedPlayers.length === 0 && singlePlayers.length === 4;
       }
     }
   },
+
+  getInitialSelection: (size) => {
+    const { getSortedAvailablePlayers: getAvailablePlayers } =
+      usePlayerStore.getState();
+    const availablePlayers = getAvailablePlayers();
+
+    if (availablePlayers.length === 0) return [];
+
+    const selection: Player[] = [];
+    let index = 0;
+
+    while (selection.length < size && index < availablePlayers.length) {
+      const player = availablePlayers[index];
+      const pairedPlayer = get().getPairedPlayer(player.id);
+
+      // Add player and their pair if possible
+      if (pairedPlayer) {
+        if (selection.length + 2 <= size) {
+          selection.push(player, pairedPlayer);
+        }
+      } else {
+        if (selection.length + 1 <= size) {
+          selection.push(player);
+        }
+      }
+
+      index++;
+    }
+
+    return selection;
+  },
+
+  canPairPlayers: (firstPlayerId, secondPlayerId) => {
+    const { pairs } = get();
+    const { players } = usePlayerStore.getState();
+
+    // Check if players exist
+    const firstPlayer = players.find((p) => p.id === firstPlayerId);
+    const secondPlayer = players.find((p) => p.id === secondPlayerId);
+
+    if (!firstPlayer || !secondPlayer) {
+      console.warn("One or both players not found");
+      return false;
+    }
+
+    // Check if either player is already paired
+    const existingPair = pairs.find(
+      (p) =>
+        p.playerIds.includes(firstPlayerId) ||
+        p.playerIds.includes(secondPlayerId),
+    );
+
+    if (existingPair) {
+      console.warn("One or both players already paired");
+      return false;
+    }
+
+    return true;
+  },
+
+  getPairs: () => get().pairs,
 }));

@@ -1,273 +1,219 @@
-import { v4 as uuid } from "uuid";
 import { create } from "zustand";
-import type { Player } from "@types";
-import { generateQueueNumber, buildInitialPlayers } from "@utils";
 import { useGameStore } from "./game-store";
+import { usePairStore } from "./pair-store";
+import {
+  buildInitialPlayers,
+  generateQueueNumber,
+  generateUniqueId,
+  parseQueueNumberToOrder,
+} from "@utils";
+import type { Player, PlayerStatus } from "@types";
 
-/**
- * State interface for player management
- * - Contains list of all players and currently selected players
- */
 interface PlayerState {
   /**
-   * List of all players in the system
-   * - Includes player details and status
+   * List of all players
    */
   players: Player[];
   /**
-   * Currently selected players for game
-   * - Subset of players list
+   * List of selected players for the next game
    */
   selectedPlayers: Player[];
-}
-
-/**
- * Actions interface for player management
- * - Contains methods for player CRUD operations and selection
- */
-interface PlayerActions {
-  /**
-   * Selects or deselects a player for game
-   * - If player is already selected, removes them
-   * - If player is not selected, adds them
-   */
-  selectPlayer: (player: Player) => void;
 
   /**
-   * Sets the list of selected players
-   * - Used for bulk selection/deselection
-   */
-  selectPlayers: (players: Player[]) => void;
-
-  /**
-   * Adds a new player to the system
-   * - Generates unique ID
-   * - Sets initial status as "available"
-   * - Assigns queue number based on game count
+   * Adds a new player
+   *
+   * @param name Player name
    */
   addPlayer: (name: string) => void;
 
   /**
-   * Marks a player as retired
-   * - Updates player status to "retired"
-   * - Removes from selected players if present
+   * Deletes a player
+   *
+   * @param id Player ID to delete
    */
   deletePlayer: (id: string) => void;
 
   /**
-   * Restores a retired player
-   * - Updates player status to "available"
-   */
-  undeletePlayer: (id: string) => void;
-
-  /**
    * Updates a player's status
-   * - Can be: "available", "playing", "unavailable", "retired"
+   *
+   * @param id Player ID to update
+   * @param status New status
    */
-  updatePlayerStatus: (id: string, status: Player["status"]) => void;
+  updatePlayerStatus: (id: string, status: PlayerStatus) => void;
 
   /**
    * Updates a player's queue number
-   * - Based on game index and player index
-   * - Used when releasing courts
+   *
+   * @param id Player ID to update
+   * @param queueData Queue data containing game index and player index
    */
   updateQueueNumber: (
     id: string,
-    params: { gameIndex: number; playerIndex: number },
+    queueData: { gameIndex: number; playerIndex: number },
   ) => void;
 
   /**
-   * Updates a player's entire state
-   * - Used for partner management
-   * - Preserves all other player fields
-   */
-  updatePlayer: (updatedPlayer: Player) => void;
-
-  /**
-   * Gets list of available players
-   * - Filters for "available" status
-   * - Sorts by queue number
+   * Gets available players
+   *
+   * @returns List of available players
    */
   getAvailablePlayers: () => Player[];
 
   /**
-   * Validates if a player name is unique
-   * - Checks against existing player names
-   * - Case sensitive comparison
+   * Gets last queued available players
+   *
+   * @returns List of available players
    */
-  validatePlayer: (name: string) => boolean;
+  getLastQueuedAvailablePlayers: () => Player[];
 
   /**
-   * Initializes the player store
-   * - Builds initial player list
+   * Gets available players sorted by queue number
+   *
+   * @returns List of available players
+   */
+  getSortedAvailablePlayers: () => Player[];
+
+  /**
+   * Gets selected players
+   *
+   * @returns List of selected players
+   */
+  getSelectedPlayers: () => Player[];
+
+  /**
+   * Selects a player for the next game
+   *
+   * @param player Player to select
+   */
+  selectPlayer: (player: Player) => void;
+
+  /**
+   * Selects multiple players for the next game
+   *
+   * @param players Players to select
+   */
+  selectPlayers: (players: Player[]) => void;
+
+  /**
+   * Initializes the players store
+   *
+   * This action builds initial player data.
    */
   initialize: () => void;
 }
 
-/**
- * Type alias for player store
- * - Combines player state and actions
- */
-type UsePlayerStore = PlayerState & PlayerActions;
-
-/**
- * Initial player list
- * - Built using buildInitialPlayers utility
- * - Empty array if not in browser environment
- */
-const initialPlayers =
-  typeof window !== "undefined" ? buildInitialPlayers() : [];
-
-/**
- * Player store creation
- * - Uses zustand create method
- * - Initializes with initial player list and empty selected players
- */
-export const usePlayerStore = create<UsePlayerStore>((set, get) => ({
-  players: initialPlayers,
+export const usePlayerStore = create<PlayerState>((set, get) => ({
+  players: [],
   selectedPlayers: [],
 
-  /**
-   * Initializes the player store
-   * - Builds initial player list
-   */
   initialize: () => {
     set({ players: buildInitialPlayers() });
   },
 
-  /**
-   * Selects or deselects a player for game
-   * - If player is already selected, removes them
-   * - If player is not selected, adds them
-   */
-  selectPlayer: (player) =>
-    set((state) => ({
-      selectedPlayers: state.selectedPlayers.includes(player)
-        ? state.selectedPlayers.filter((p) => p.id !== player.id)
-        : [...state.selectedPlayers, player],
-    })),
-
-  /**
-   * Sets the list of selected players
-   * - Used for bulk selection/deselection
-   */
-  selectPlayers: (players) => set({ selectedPlayers: players }),
-
-  /**
-   * Validates if a player name is unique
-   * - Checks against existing player names
-   * - Case sensitive comparison
-   */
-  validatePlayer: (name) => {
-    const { players } = get();
-    return !players.some((player) => player.name === name);
-  },
-
-  /**
-   * Adds a new player to the system
-   * - Generates unique ID
-   * - Sets initial status as "available"
-   * - Assigns queue number based on game count
-   */
   addPlayer: (name) => {
-    const { players } = get();
-    const gameStore = useGameStore.getState();
+    const { getGameCount } = useGameStore.getState();
+    const players = get().players;
 
-    // Validate player name
-    if (!get().validatePlayer(name)) return;
+    const newPlayer: Player = {
+      id: generateUniqueId(),
+      name,
+      status: "available",
+      index: players.length,
+      queueNumber: generateQueueNumber({
+        gameIndex: getGameCount() + 1,
+        playerIndex: players.length,
+      }),
+    };
 
-    set({
-      players: [
-        ...players,
-        {
-          id: uuid(),
-          name,
-          status: "available",
-          index: players.length,
-          queueNumber: generateQueueNumber({
-            gameIndex: gameStore.getGameCount() + 1,
-            playerIndex: players.length,
-          }),
-          partnerId: undefined,
-        },
-      ],
-    });
+    set((state) => ({
+      players: [...state.players, newPlayer],
+    }));
   },
 
-  /**
-   * Marks a player as retired
-   * - Updates player status to "retired"
-   * - Removes from selected players if present
-   */
-  deletePlayer: (id) =>
+  deletePlayer: (id) => {
     set((state) => ({
-      players: state.players.map((player) =>
-        player.id === id ? { ...player, status: "retired" } : player,
-      ),
-      // Also remove from selected players if present
+      players: state.players.filter((p) => p.id !== id),
       selectedPlayers: state.selectedPlayers.filter((p) => p.id !== id),
-    })),
+    }));
+  },
 
-  /**
-   * Restores a retired player
-   * - Updates player status to "available"
-   */
-  undeletePlayer: (id) =>
+  updatePlayerStatus: (id, status) => {
     set((state) => ({
-      players: state.players.map((player) =>
-        player.id === id ? { ...player, status: "available" } : player,
-      ),
-    })),
+      players: state.players.map((p) => (p.id === id ? { ...p, status } : p)),
+    }));
+  },
 
-  /**
-   * Updates a player's status
-   * - Can be: "available", "playing", "unavailable", "retired"
-   */
-  updatePlayerStatus: (id, status) =>
+  updateQueueNumber: (id, { gameIndex, playerIndex }) => {
     set((state) => ({
-      players: state.players.map((player) =>
-        player.id === id ? { ...player, status } : player,
-      ),
-    })),
-
-  /**
-   * Updates a player's queue number
-   * - Based on game index and player index
-   * - Used when releasing courts
-   */
-  updateQueueNumber: (id, { gameIndex, playerIndex }) =>
-    set((state) => ({
-      players: state.players.map((player) =>
-        player.id === id
+      players: state.players.map((p) =>
+        p.id === id
           ? {
-              ...player,
+              ...p,
               queueNumber: generateQueueNumber({ gameIndex, playerIndex }),
             }
-          : player,
+          : p,
       ),
-    })),
+    }));
+  },
 
-  /**
-   * Updates a player's entire state
-   * - Used for partner management
-   * - Preserves all other player fields
-   */
-  updatePlayer: (updatedPlayer) =>
-    set((state) => ({
-      players: state.players.map((player) =>
-        player.id === updatedPlayer.id ? updatedPlayer : player,
-      ),
-    })),
-
-  /**
-   * Gets list of available players
-   * - Filters for "available" status
-   * - Sorts by queue number
-   */
   getAvailablePlayers: () => {
-    const { players } = get();
+    const players = get().players;
+
+    return players.filter((p) => p.status === "available");
+  },
+
+  getLastQueuedAvailablePlayers: (): Player[] => {
+    const { getGameCount } = useGameStore.getState();
+    const players = get().players;
+
+    return players.filter(
+      (p) =>
+        p.status === "available" &&
+        p.queueNumber.startsWith(
+          (getGameCount() + 1).toString().padStart(3, "0"),
+        ),
+    );
+  },
+
+  getSortedAvailablePlayers: () => {
+    const players = get().players;
     return players
-      .filter((player) => player.status === "available")
-      .sort((a, b) => Number(a.queueNumber) - Number(b.queueNumber));
+      .filter((p) => p.status === "available")
+      .sort(
+        (playerA, playerB) =>
+          Number(parseQueueNumberToOrder(playerA.queueNumber)) -
+          Number(parseQueueNumberToOrder(playerB.queueNumber)),
+      );
+  },
+
+  getSelectedPlayers: () => get().selectedPlayers,
+
+  selectPlayer: (player) => {
+    const currentSelection = [...get().selectedPlayers];
+    const playerIndex = currentSelection.findIndex((p) => p.id === player.id);
+
+    if (playerIndex !== -1) {
+      // Deselect player if already selected
+      currentSelection.splice(playerIndex, 1);
+    } else {
+      // Add player if not at max capacity
+      const { settings } = useGameStore.getState();
+      if (currentSelection.length < settings.playerNumber) {
+        currentSelection.push(player);
+      }
+    }
+
+    // Validate and update selection
+    const { validatePlayerSelection } = usePairStore.getState();
+    if (validatePlayerSelection(currentSelection)) {
+      set({ selectedPlayers: currentSelection });
+    }
+  },
+
+  selectPlayers: (players) => {
+    const { validatePlayerSelection } = usePairStore.getState();
+    if (validatePlayerSelection(players)) {
+      set({ selectedPlayers: players });
+    }
   },
 }));
