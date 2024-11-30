@@ -1,13 +1,12 @@
 import { create } from "zustand";
-import { useGameStore } from "./game-store";
-import { usePairStore } from "./pair-store";
+import { useGameStore, usePairStore } from "@stores";
+import type { Player, PlayerStatus } from "@types";
 import {
   buildInitialPlayers,
   generateQueueNumber,
   generateUniqueId,
   parseQueueNumberToOrder,
 } from "@utils";
-import type { Player, PlayerStatus } from "@types";
 
 interface PlayerState {
   /**
@@ -34,6 +33,13 @@ interface PlayerState {
   deletePlayer: (id: string) => void;
 
   /**
+   * Undeletes a player
+   *
+   * @param id Player ID to undelete
+   */
+  undeletePlayer: (id: string) => void;
+
+  /**
    * Updates a player's status
    *
    * @param id Player ID to update
@@ -54,29 +60,21 @@ interface PlayerState {
 
   /**
    * Gets available players
-   *
-   * @returns List of available players
    */
   getAvailablePlayers: () => Player[];
 
   /**
    * Gets last queued available players
-   *
-   * @returns List of available players
    */
   getLastQueuedAvailablePlayers: () => Player[];
 
   /**
    * Gets available players sorted by queue number
-   *
-   * @returns List of available players
    */
   getSortedAvailablePlayers: () => Player[];
 
   /**
    * Gets selected players
-   *
-   * @returns List of selected players
    */
   getSelectedPlayers: () => Player[];
 
@@ -102,118 +100,130 @@ interface PlayerState {
   initialize: () => void;
 }
 
-export const usePlayerStore = create<PlayerState>((set, get) => ({
-  players: [],
-  selectedPlayers: [],
+export const usePlayerStore = create<PlayerState>((set, get) => {
+  // Lazily get state stores to avoid circular dependency
+  const getGameStore = () => useGameStore.getState();
+  const getPairStore = () => usePairStore.getState();
 
-  initialize: () => {
-    set({ players: buildInitialPlayers() });
-  },
+  return {
+    players: [],
+    selectedPlayers: [],
 
-  addPlayer: (name) => {
-    const { getGameCount } = useGameStore.getState();
-    const players = get().players;
+    initialize: () => {
+      set({ players: buildInitialPlayers() });
+    },
 
-    const newPlayer: Player = {
-      id: generateUniqueId(),
-      name,
-      status: "available",
-      index: players.length,
-      queueNumber: generateQueueNumber({
-        gameIndex: getGameCount() + 1,
-        playerIndex: players.length,
-      }),
-    };
+    addPlayer: (name) => {
+      const { getGameCount } = getGameStore();
+      const players = get().players;
 
-    set((state) => ({
-      players: [...state.players, newPlayer],
-    }));
-  },
+      const newPlayer: Player = {
+        id: generateUniqueId(),
+        name,
+        status: "available",
+        index: players.length,
+        queueNumber: generateQueueNumber({
+          gameIndex: getGameCount() + 1,
+          playerIndex: players.length,
+        }),
+      };
 
-  deletePlayer: (id) => {
-    set((state) => ({
-      players: state.players.filter((p) => p.id !== id),
-      selectedPlayers: state.selectedPlayers.filter((p) => p.id !== id),
-    }));
-  },
+      set((state) => ({
+        players: [...state.players, newPlayer],
+      }));
+    },
 
-  updatePlayerStatus: (id, status) => {
-    set((state) => ({
-      players: state.players.map((p) => (p.id === id ? { ...p, status } : p)),
-    }));
-  },
+    deletePlayer: (id) => {
+      get().updatePlayerStatus(id, "retired");
 
-  updateQueueNumber: (id, { gameIndex, playerIndex }) => {
-    set((state) => ({
-      players: state.players.map((p) =>
-        p.id === id
-          ? {
-              ...p,
-              queueNumber: generateQueueNumber({ gameIndex, playerIndex }),
-            }
-          : p,
-      ),
-    }));
-  },
+      set((state) => ({
+        selectedPlayers: state.selectedPlayers.filter((p) => p.id !== id),
+      }));
+    },
 
-  getAvailablePlayers: () => {
-    const players = get().players;
+    undeletePlayer: (id) => {
+      get().updatePlayerStatus(id, "available");
+    },
 
-    return players.filter((p) => p.status === "available");
-  },
+    updatePlayerStatus: (id, status) => {
+      set((state) => ({
+        players: state.players.map((p) => (p.id === id ? { ...p, status } : p)),
+      }));
+    },
 
-  getLastQueuedAvailablePlayers: (): Player[] => {
-    const { getGameCount } = useGameStore.getState();
-    const players = get().players;
-
-    return players.filter(
-      (p) =>
-        p.status === "available" &&
-        p.queueNumber.startsWith(
-          (getGameCount() + 1).toString().padStart(3, "0"),
+    updateQueueNumber: (id, { gameIndex, playerIndex }) => {
+      set((state) => ({
+        players: state.players.map((p) =>
+          p.id === id
+            ? {
+                ...p,
+                queueNumber: generateQueueNumber({ gameIndex, playerIndex }),
+              }
+            : p,
         ),
-    );
-  },
+      }));
+    },
 
-  getSortedAvailablePlayers: () => {
-    const players = get().players;
-    return players
-      .filter((p) => p.status === "available")
-      .sort(
-        (playerA, playerB) =>
-          Number(parseQueueNumberToOrder(playerA.queueNumber)) -
-          Number(parseQueueNumberToOrder(playerB.queueNumber)),
+    getAvailablePlayers: () => {
+      const players = get().players;
+
+      return players.filter((p) => p.status === "available");
+    },
+
+    getLastQueuedAvailablePlayers: (): Player[] => {
+      const { getGameCount } = getGameStore();
+      const players = get().players;
+
+      return players.filter(
+        (p) =>
+          p.status === "available" &&
+          p.queueNumber.startsWith(
+            (getGameCount() + 1).toString().padStart(3, "0"),
+          ),
       );
-  },
+    },
 
-  getSelectedPlayers: () => get().selectedPlayers,
+    getSortedAvailablePlayers: () => {
+      const players = get().players;
 
-  selectPlayer: (player) => {
-    const currentSelection = [...get().selectedPlayers];
-    const playerIndex = currentSelection.findIndex((p) => p.id === player.id);
+      return players
+        .filter((p) => p.status === "available")
+        .sort(
+          (playerA, playerB) =>
+            Number(parseQueueNumberToOrder(playerA.queueNumber)) -
+            Number(parseQueueNumberToOrder(playerB.queueNumber)),
+        );
+    },
 
-    if (playerIndex !== -1) {
-      // Deselect player if already selected
-      currentSelection.splice(playerIndex, 1);
-    } else {
-      // Add player if not at max capacity
-      const { settings } = useGameStore.getState();
-      if (currentSelection.length < settings.playerNumber) {
-        currentSelection.push(player);
+    getSelectedPlayers: () => get().selectedPlayers,
+
+    selectPlayer: (player) => {
+      const currentSelection = [...get().selectedPlayers];
+      const playerIndex = currentSelection.findIndex((p) => p.id === player.id);
+
+      if (playerIndex !== -1) {
+        // Deselect player if already selected
+        currentSelection.splice(playerIndex, 1);
+      } else {
+        // Add player if not at max capacity
+        const { settings } = getGameStore();
+        if (currentSelection.length < settings.playerNumber) {
+          currentSelection.push(player);
+        }
       }
-    }
 
-    // Validate and update selection
-    const { validatePlayerSelection } = usePairStore.getState();
-    if (validatePlayerSelection(currentSelection)) {
-      set({ selectedPlayers: currentSelection });
-    }
-  },
+      // Validate and update selection
+      const { validatePlayerSelection } = getPairStore();
+      if (validatePlayerSelection(currentSelection)) {
+        set({ selectedPlayers: currentSelection });
+      }
+    },
 
-  selectPlayers: (players) => {
-    const { validatePlayerSelection } = usePairStore.getState();
-    if (validatePlayerSelection(players)) {
-      set({ selectedPlayers: players });
-    }
-  },
-}));
+    selectPlayers: (players) => {
+      const { validatePlayerSelection } = getPairStore();
+      if (validatePlayerSelection(players)) {
+        set({ selectedPlayers: players });
+      }
+    },
+  };
+});
