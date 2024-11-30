@@ -40,7 +40,7 @@ interface GameState {
   /**
    * Data for all courts
    */
-  courtData: CourtData;
+  courtData: CourtData | null;
   /**
    * Next court to be used
    */
@@ -193,9 +193,6 @@ interface GameState {
   initialize: () => void;
 }
 
-const initialCourtData =
-  typeof window !== "undefined" ? buildInitialCourtData() : {};
-
 /**
  * Creates the game store with the initial state and actions.
  */
@@ -211,7 +208,7 @@ export const useGameStore = create<GameState>((set, get) => {
       autoSelectionSize: 2,
     },
     games: [],
-    courtData: initialCourtData,
+    courtData: null,
     nextCourt: null,
     autoSelectionSize: 2,
 
@@ -237,7 +234,9 @@ export const useGameStore = create<GameState>((set, get) => {
 
     updateCourtData: (courtId, data) => {
       set((state) => {
-        const currentCourtData = state.courtData[courtId];
+        const currentCourtData = state.courtData
+          ? state.courtData[courtId]
+          : null;
 
         if (!currentCourtData) {
           console.warn(`Court ${courtId} not found in court data`);
@@ -440,8 +439,8 @@ export const useGameStore = create<GameState>((set, get) => {
     },
 
     releaseCourt: (courtId: string) => {
-      const { courtData } = get();
-      const foundCourtData: CourtData[0] | undefined = courtData[courtId];
+      const courtData = get().courtData;
+      const foundCourtData = courtData ? courtData[courtId] : null;
 
       if (!foundCourtData) {
         console.warn("Court is not found to be released.");
@@ -473,8 +472,8 @@ export const useGameStore = create<GameState>((set, get) => {
     },
 
     toggleCourtLock: (courtId: string) => {
-      const { courtData } = get();
-      const foundCourt = courtData[courtId];
+      const courtData = get().courtData;
+      const foundCourt = courtData ? courtData[courtId] : null;
 
       if (!foundCourt) {
         return;
