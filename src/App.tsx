@@ -271,73 +271,6 @@ function App() {
     setSelectedPlayers([]);
   };
 
-  const releaseCourt = (courtId: string) => {
-    const foundCourtData: CourtData[0] | undefined = courtData[courtId];
-
-    if (!foundCourtData) {
-      console.warn("Court is not found to be released.");
-      return;
-    }
-
-    const availablePlayers = players.filter(
-      (player) =>
-        player.status === "available" &&
-        player.queueNumber.startsWith(
-          (games.length + 1).toString().padStart(3, "0"),
-        ),
-    );
-
-    const playersToRelease = [...foundCourtData.players];
-    const updatedPlayers = [...players];
-
-    playersToRelease.forEach(({ index: playerIndex }, playerToReleaseIndex) => {
-      const foundPlayer = updatedPlayers[playerIndex];
-      if (!foundPlayer) return;
-
-      foundPlayer.status = "available";
-      foundPlayer.queueNumber = generateQueueNumber({
-        gameIndex: games.length + 1,
-        playerIndex: availablePlayers.length + playerToReleaseIndex,
-      });
-    });
-
-    setPlayers(updatedPlayers);
-
-    const courtToRelease: CourtData = {
-      [foundCourtData.court.id]: {
-        court: { ...foundCourtData.court, status: "available" },
-        gameId: undefined,
-        game: undefined,
-        players: [],
-      },
-    };
-    setCourtData((oldCourtData) => ({
-      ...oldCourtData,
-      ...courtToRelease,
-    }));
-  };
-
-  const toggleCourtLock = (courtId: string) => {
-    const foundCourtData = courtData[courtId];
-    if (!foundCourtData) return;
-
-    const updatedCourtData: CourtData = {
-      [courtId]: {
-        ...foundCourtData,
-        court: {
-          ...foundCourtData.court,
-          locked: !foundCourtData.court.locked,
-          status: foundCourtData.court.locked ? "available" : "unavailable",
-        },
-      },
-    };
-
-    setCourtData((prevData) => ({
-      ...prevData,
-      ...updatedCourtData,
-    }));
-  };
-
   useEffect(() => {
     const nextAvailableCourtsData = Object.values(courtData)
       .filter(({ court }) => court.status === "available" && !court.locked)
@@ -396,11 +329,7 @@ function App() {
             <LayoutGrid size="1em" className="mr-2" /> Courts
           </h2>
 
-          <CourtDisplay
-            courtData={courtData}
-            releaseCourt={releaseCourt}
-            toggleCourtLock={toggleCourtLock}
-          />
+          <CourtDisplay />
         </section>
       </div>
 

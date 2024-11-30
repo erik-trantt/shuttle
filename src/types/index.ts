@@ -1,17 +1,21 @@
+export type CourtStatus = "available" | "unavailable" | "playing";
+
 export interface Court {
   id: string;
   name: string;
   index: number;
-  status: "available" | "unavailable" | "playing";
+  status: CourtStatus;
   locked: boolean;
 }
+
+export type PlayerStatus = "available" | "unavailable" | "playing" | "retired";
 
 export interface Player {
   id: string;
   name: string;
   index: number;
   queueNumber: string;
-  status: "available" | "unavailable" | "playing" | "retired";
+  status: PlayerStatus;
   partnerId?: string;
 }
 

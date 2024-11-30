@@ -20,7 +20,6 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
   players,
   pairs,
   nextCourtAvailable,
-  selectPlayer,
   selectPlayers,
   selectedPlayers,
   startGame,
@@ -431,10 +430,6 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
     );
   };
 
-  const isPaired = (player: Player) => {
-    return pairs.some((pair) => pair.playerIds.includes(player.id));
-  };
-
   return (
     <div
       className={`[--sa-list-item-width:_50%] sm:[--sa-list-item-width:_25%]`}
@@ -456,13 +451,9 @@ const PlayerPool: React.FC<PlayerPoolProps> = ({
             player={player}
             key={player.queueNumber}
             disabled={player.status === "unavailable"}
-            selectPlayer={() => selectPlayer(player)}
             selected={selectedPlayers.some(
               (selected) => selected.id === player.id,
             )}
-            isPaired={isPaired(player)}
-            pairs={pairs}
-            players={players}
           />
         ))}
       </ul>

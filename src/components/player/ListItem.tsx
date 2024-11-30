@@ -1,27 +1,24 @@
 import React, { type ChangeEventHandler } from "react";
 import { Users2 } from "lucide-react";
-import type { Player, PlayerPair } from "@types";
+import type { Player } from "@types";
 import { parseQueueNumberToOrder } from "@utils";
+import { usePlayerStore, usePairStore } from "@stores";
 
 export interface PlayerListItemProps {
   disabled: boolean;
   player: Player;
-  selectPlayer: (player: Player) => void;
   selected: boolean;
-  isPaired: boolean;
-  pairs: PlayerPair[];
-  players: Player[];
 }
 
 const PlayerListItem: React.FC<PlayerListItemProps> = ({
   disabled,
   player,
-  selectPlayer,
   selected,
-  isPaired,
-  pairs,
-  players,
 }) => {
+  const { selectPlayer } = usePlayerStore();
+  const { pairs } = usePairStore();
+  const { players } = usePlayerStore();
+
   const order = parseQueueNumberToOrder(player.queueNumber);
 
   const handleOnChange: ChangeEventHandler<HTMLInputElement> = (_ev) => {
@@ -29,7 +26,6 @@ const PlayerListItem: React.FC<PlayerListItemProps> = ({
   };
 
   const getPairInfo = () => {
-    if (!isPaired) return null;
     const pair = pairs.find((p) => p.playerIds.includes(player.id));
     if (!pair) return null;
 
@@ -49,6 +45,7 @@ const PlayerListItem: React.FC<PlayerListItemProps> = ({
   };
 
   const pairInfo = getPairInfo();
+  const isPaired = Boolean(pairInfo);
 
   return (
     <li className="flex" data-queue-number={order}>
