@@ -1,91 +1,116 @@
 import React, { useState, useEffect } from "react";
 import { X, UserPlus, Pause, Link2, Link2Off, Dices, Play } from "lucide-react";
-import type { Player, PlayerPair } from "@types";
+import { usePairStore, usePlayerStore } from "@stores";
 
 interface UserManagementProps {
   isOpen: boolean;
   onClose: () => void;
-  players: Player[];
-  pairs: PlayerPair[];
-  onCreatePair: (playerIds: [string, string], name: string) => void;
-  onDeletePair: (pairId: string) => void;
-  onCreatePlayer: (name: string) => void;
-  onDeletePlayer: (id: string) => void;
-  onUndeletePlayer: (id: string) => void;
 }
 
-const UserManagement: React.FC<UserManagementProps> = ({
-  isOpen,
-  onClose,
-  players,
-  pairs,
-  onCreatePair,
-  onDeletePair,
-  onCreatePlayer,
-  onDeletePlayer,
-  onUndeletePlayer,
-}) => {
+const UserManagement: React.FC<UserManagementProps> = ({ isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState<"pairs" | "players">("players");
-  const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
+  const [selectedPartners, setSelectedPartners] = useState<string[]>([]);
   const [pairName, setPairName] = useState("");
   const [newPlayerName, setNewPlayerName] = useState("");
 
-  // Players available for pairing
-  // - Available players are those that are not paired or in the process of playing
-  const availablePlayersForPairing = players.filter(
-    (player) =>
-      player.status === "available" &&
-      !pairs.some((pair) => pair.playerIds.includes(player.id)),
-  );
+  const { players, addPlayer, deletePlayer, undeletePlayer, updatePlayer } =
+    usePlayerStore();
+  const { pairs, createPair, deletePair, getAvailablePlayersForPairing } =
+    usePairStore();
+
+  const availablePlayersForPairing = getAvailablePlayersForPairing();
 
   // Update pair name when players are selected
   useEffect(() => {
-    if (selectedPlayers.length === 2) {
-      const player1 = players.find((p) => p.id === selectedPlayers[0]);
-      const player2 = players.find((p) => p.id === selectedPlayers[1]);
+    if (selectedPartners.length === 2) {
+      const player1 = players.find((p) => p.id === selectedPartners[0]);
+      const player2 = players.find((p) => p.id === selectedPartners[1]);
       if (player1 && player2) {
         setPairName(`${player1.name} & ${player2.name}`);
       }
     } else {
       setPairName("");
     }
-  }, [selectedPlayers, players]);
+  }, [selectedPartners, players]);
 
   const handlePlayerSelect = (playerId: string) => {
-    if (selectedPlayers.includes(playerId)) {
-      setSelectedPlayers(selectedPlayers.filter((id) => id !== playerId));
-    } else if (selectedPlayers.length < 2) {
-      setSelectedPlayers([...selectedPlayers, playerId]);
+    if (selectedPartners.includes(playerId)) {
+      setSelectedPartners(selectedPartners.filter((id) => id !== playerId));
+    } else if (selectedPartners.length < 2) {
+      setSelectedPartners([...selectedPartners, playerId]);
     }
   };
 
   const handleCreatePair = (event: React.FormEvent) => {
     event.preventDefault();
 
-    if (selectedPlayers.length === 2 && pairName.trim()) {
-      onCreatePair(selectedPlayers as [string, string], pairName.trim());
-      setSelectedPlayers([]);
+    if (selectedPartners.length === 2 && pairName.trim()) {
+      createPair(pairName, selectedPartners[0], selectedPartners[1]);
+
+      selectedPartners.forEach((pairPlayerId) => {
+        const foundPlayer = players.find((p) => p.id === pairPlayerId);
+
+        if (foundPlayer) {
+          updatePlayer(pairPlayerId, {
+            partnerId: pairPlayerId,
+            partner: foundPlayer,
+          });
+        }
+      });
+
+      setSelectedPartners([]);
+
       setPairName("");
     }
+  };
+
+  const handleDeletePair = (pairId: string) => {
+    const pair = pairs.find((p) => p.id === pairId);
+
+    if (!pair) {
+      return;
+    }
+
+    pair.playerIds.forEach((playerId) => {
+      updatePlayer(playerId, { partnerId: undefined, partner: undefined });
+    });
+
+    deletePair(pairId);
   };
 
   const handleCreatePlayer = (event: React.FormEvent) => {
     event.preventDefault();
 
     if (newPlayerName.trim()) {
-      onCreatePlayer(newPlayerName.trim());
+      addPlayer(newPlayerName.trim());
       setNewPlayerName("");
     }
+  };
+
+  const handleDeletePlayer = (playerId: string) => {
+    const foundPlayer = players.find((p) => p.id === playerId);
+
+    if (!foundPlayer) {
+      return;
+    }
+
+    if (foundPlayer.partnerId || foundPlayer.partner) {
+      updatePlayer(playerId, { partnerId: undefined, partner: undefined });
+    }
+
+    deletePlayer(playerId);
   };
 
   const createRandomPair = () => {
     const randomPlayers = availablePlayersForPairing
       .sort(() => Math.random() - 0.5)
       .slice(0, 2);
-    setSelectedPlayers(randomPlayers.map((player) => player.id));
+    setSelectedPartners(randomPlayers.map((player) => player.id));
   };
 
-  if (!isOpen) return null;
+  if (!isOpen) {
+    return null;
+  }
 
   return (
     <div
@@ -137,7 +162,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
                 <button
                   type="submit"
                   title="Pair"
-                  disabled={selectedPlayers.length !== 2 || !pairName.trim()}
+                  disabled={selectedPartners.length !== 2 || !pairName.trim()}
                   className="flex w-min flex-shrink-0 items-center rounded bg-blue-500 px-2 disabled:bg-gray-200"
                 >
                   <Link2 size="1em" className="mr-2" />
@@ -161,7 +186,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
                     onClick={() => handlePlayerSelect(player.id)}
                     disabled={player.status !== "available"}
                     className={`rounded p-2 text-sm ${
-                      selectedPlayers.includes(player.id)
+                      selectedPartners.includes(player.id)
                         ? "bg-blue-100 hover:bg-blue-200"
                         : player.status !== "available"
                           ? "cursor-not-allowed bg-gray-100 opacity-50"
@@ -219,7 +244,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
                             ? "Cannot unpair players who are in a game"
                             : "Unpair"
                         }
-                        onClick={() => onDeletePair(pair.id)}
+                        onClick={() => handleDeletePair(pair.id)}
                         disabled={isPlaying}
                         className={`ml-2 ${
                           isPlaying
@@ -285,7 +310,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
                     <div>
                       <button
                         title="Undelete"
-                        onClick={() => onUndeletePlayer(player.id)}
+                        onClick={() => undeletePlayer(player.id)}
                         disabled={player.status !== "retired"}
                         className={`group ml-2 ${
                           player.status !== "retired"
@@ -301,7 +326,7 @@ const UserManagement: React.FC<UserManagementProps> = ({
 
                       <button
                         title="Delete"
-                        onClick={() => onDeletePlayer(player.id)}
+                        onClick={() => handleDeletePlayer(player.id)}
                         disabled={player.status !== "available"}
                         className={`group ml-2 ${
                           player.status !== "available"

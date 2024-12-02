@@ -1,27 +1,14 @@
 import { create } from "zustand";
 import { usePlayerStore, usePairStore } from "@stores";
 import type { Court, CourtData, Game, Player } from "@types";
-import { buildInitialCourtData, COURT_IDS, generateUniqueId } from "@utils";
-
-/**
- * Settings interface for game configuration
- *
- * This interface defines the structure of game settings, including player number, pair allowance, and auto-selection size.
- */
-interface GameSettings {
-  /**
-   * Number of players required for a game
-   */
-  playerNumber: number;
-  /**
-   * Whether pairs are allowed in the game
-   */
-  allowPairs: boolean;
-  /**
-   * Number of players to auto-select
-   */
-  autoSelectionSize: number;
-}
+import {
+  buildInitialCourtData,
+  COURT_IDS,
+  generateQueueNumber,
+  generateUniqueId,
+  validatePlayerSelection,
+} from "@utils";
+import { buildGameSettings, GameFormatType, GameSettings } from "@configs";
 
 /**
  * State interface for game management
@@ -47,23 +34,16 @@ interface GameState {
   nextCourt: Court | null;
 
   /**
-   * Current auto-selection size
-   */
-  autoSelectionSize: number;
-
-  /**
-   * Sets the availability of the next court
-   *
-   * This action is used to control when new games can start.
-   *
-   * @param available Whether the next court is available
-   */
-  // setNextCourtAvailable: (available: boolean) => void;
-
-  /**
    * Returns whether there is a next court
    */
   hasNextCourt: () => boolean;
+
+  /**
+   * Returns the next available court
+   *
+   * @returns The next available court or null if no court is available
+   */
+  getNextAvailableCourt: () => Court | null;
 
   /**
    * Sets the next court
@@ -81,7 +61,7 @@ interface GameState {
    *
    * @param settings Partial game settings to update
    */
-  updateSettings: (settings: Partial<GameSettings>) => void;
+  updateSettings: (format: GameFormatType) => void;
 
   /**
    * Updates court data
@@ -145,20 +125,11 @@ interface GameState {
   getAutoSelectionSize: () => number;
 
   /**
-   * Sets the auto-selection size
-   *
-   * @param size The new auto-selection size
-   */
-  setAutoSelectionSize: (size: number) => void;
-
-  /**
    * Auto-selects players for the next game
    *
    * This action intelligently selects players based on game settings and pair status.
-   *
-   * @param suggestionSize Number of players to auto-select
    */
-  autoSelectPlayers: (suggestionSize: number) => void;
+  autoSelectPlayers: () => void;
 
   /**
    * Suggests players for the next game
@@ -202,15 +173,10 @@ export const useGameStore = create<GameState>((set, get) => {
   const getPlayerStore = () => usePlayerStore.getState();
 
   return {
-    settings: {
-      playerNumber: 4,
-      allowPairs: true,
-      autoSelectionSize: 2,
-    },
+    settings: buildGameSettings("DOUBLE"),
     games: [],
     courtData: null,
     nextCourt: null,
-    autoSelectionSize: 2,
 
     initialize: () => {
       const initialCourtData = buildInitialCourtData();
@@ -220,16 +186,38 @@ export const useGameStore = create<GameState>((set, get) => {
       set({
         courtData: initialCourtData,
         nextCourt,
+        settings: buildGameSettings("DOUBLE"),
       });
     },
 
     hasNextCourt: () => !!get().nextCourt,
 
+    getNextAvailableCourt: () => {
+      const courtData = get().courtData;
+
+      if (!courtData) {
+        return null;
+      }
+
+      const availableCourts = Object.values(courtData).filter(
+        ({ court }) => court.status === "available",
+      );
+
+      if (!availableCourts.length) {
+        return null;
+      }
+
+      return availableCourts[0].court;
+    },
+
     setNextCourt: (court) => set({ nextCourt: court }),
 
-    updateSettings: (newSettings) =>
+    updateSettings: (format: GameFormatType) =>
       set((state) => ({
-        settings: { ...state.settings, ...newSettings },
+        settings: {
+          ...state.settings,
+          ...buildGameSettings(format),
+        },
       })),
 
     updateCourtData: (courtId, data) => {
@@ -256,20 +244,21 @@ export const useGameStore = create<GameState>((set, get) => {
         };
 
         // Validate court status transition
-        const newStatus = updatedCourtData[courtId].court.status;
-        const oldStatus = currentCourtData.court.status;
+        // TODO: Not validating for now, come back  later
+        // const newStatus = updatedCourtData[courtId].court.status;
+        // const oldStatus = currentCourtData.court.status;
 
-        const validTransition =
-          newStatus === oldStatus ||
-          (oldStatus === "available" && newStatus === "playing") ||
-          (oldStatus === "playing" && newStatus === "available");
+        // const validTransition =
+        //   newStatus === oldStatus ||
+        //   (oldStatus === "available" && newStatus === "playing") ||
+        //   (oldStatus === "playing" && newStatus === "available") ;
 
-        if (!validTransition) {
-          console.warn(
-            `Invalid court status transition from ${oldStatus} to ${newStatus}`,
-          );
-          return state;
-        }
+        // if (!validTransition) {
+        //   console.warn(
+        //     `Invalid court status transition from ${oldStatus} to ${newStatus}`,
+        //   );
+        //   return state;
+        // }
 
         return {
           ...state,
@@ -339,103 +328,258 @@ export const useGameStore = create<GameState>((set, get) => {
 
     getGameCount: () => get().games.length,
 
-    getAutoSelectionSize: () => get().autoSelectionSize,
+    getAutoSelectionSize: () =>
+      get().settings.playerNumber - get().settings.suggestionSize,
 
-    setAutoSelectionSize: (size) => set({ autoSelectionSize: size }),
+    autoSelectPlayers: () => {
+      const { selectedPlayers, getSortedAvailablePlayers } = getPlayerStore();
+      const settings = get().settings;
 
-    autoSelectPlayers: (suggestionSize: number) => {
-      const {
-        selectedPlayers,
-        getSortedAvailablePlayers: getAvailablePlayers,
-      } = getPlayerStore();
-      const { getPairedPlayer } = getPairStore();
-      const { settings } = get();
+      const sortedAvailablePlayers = getSortedAvailablePlayers();
+      const autoSelectionSize = get().getAutoSelectionSize();
 
-      if (selectedPlayers.length >= settings.playerNumber) {
+      if (!sortedAvailablePlayers.length) {
         return;
       }
 
-      // Get remaining players (excluding already selected)
-      const remainingPlayers = getAvailablePlayers().filter(
-        (p) => !selectedPlayers.some((selected) => selected.id === p.id),
-      );
+      const initialPlayer = sortedAvailablePlayers[0];
 
-      // Check if initial player is paired
-      const initialPlayer =
-        selectedPlayers.length > 0 ? selectedPlayers[0] : null;
-      const isInitialPaired =
-        initialPlayer && getPairedPlayer(initialPlayer.id) !== null;
+      // Prepare pool of candidates
+      const candidates: Player[] = [initialPlayer];
 
-      // Prepare pool of candidates based on initial player's pair status
-      let candidates: Player[] = [];
-      if (isInitialPaired) {
-        // If initial player is paired, look for another pair first
-        const pairs = remainingPlayers.filter((p) => getPairedPlayer(p.id));
-        const singles = remainingPlayers.filter((p) => !getPairedPlayer(p.id));
+      if (settings.allowPairs) {
+        // Check if initial player is paired
+        const isInitialPaired = Boolean(
+          initialPlayer && (initialPlayer.partner || initialPlayer.partnerId),
+        );
 
-        if (pairs.length >= 2) {
-          // Try to find a complete pair
-          const firstPairPlayer = pairs[0];
-          const secondPairPlayer = getPairedPlayer(firstPairPlayer.id);
-          if (secondPairPlayer) {
-            candidates = [firstPairPlayer, secondPairPlayer];
-          }
-        }
-
-        // If no pairs available, use singles
-        if (candidates.length === 0 && singles.length >= 2) {
-          candidates = singles.slice(0, 2);
-        }
-      } else {
-        // For non-paired initial player, follow game settings
-        if (settings.allowPairs) {
-          // Try to find a pair first
-          const pairs = remainingPlayers.filter((p) => getPairedPlayer(p.id));
-          if (pairs.length >= 2) {
-            const firstPairPlayer = pairs[0];
-            const secondPairPlayer = getPairedPlayer(firstPairPlayer.id);
-            if (secondPairPlayer) {
-              candidates = [firstPairPlayer, secondPairPlayer];
-            }
-          }
-        }
-
-        // If no pairs selected or pairs not allowed, use random players
-        if (candidates.length === 0) {
-          candidates = remainingPlayers.slice(0, suggestionSize);
+        // If initial player is paired, add the partner
+        if (isInitialPaired && initialPlayer.partner) {
+          candidates.push(initialPlayer.partner);
         }
       }
 
-      usePlayerStore
-        .getState()
-        .selectPlayers([...selectedPlayers, ...candidates]);
+      // Add remaining available players
+      if (candidates.length < autoSelectionSize) {
+        candidates.push(
+          ...sortedAvailablePlayers.slice(
+            candidates.length,
+            autoSelectionSize - candidates.length, // number of more players to add
+          ),
+        );
+      }
+
+      getPlayerStore().selectPlayers([...selectedPlayers, ...candidates]);
     },
 
     suggestPlayers: () => {
-      const { getSortedAvailablePlayers: getAvailablePlayers } =
+      const { getSortedAvailablePlayers, getInitialSelection } =
         getPlayerStore();
-      const { getInitialSelection } = getPairStore();
-      const { settings } = get();
+      const settings = get().settings;
+      const sortedAvailablePlayers = getSortedAvailablePlayers();
 
-      if (getAvailablePlayers().length < settings.playerNumber) {
+      if (sortedAvailablePlayers.length < settings.playerNumber) {
         console.error(
           "Not enough available players for suggestion",
-          getAvailablePlayers().length,
+          sortedAvailablePlayers.length,
         );
         return;
       }
 
       // Get initial selection
-      const initialSelection = getInitialSelection(1);
-      const remainingNeeded = settings.playerNumber - initialSelection.length;
+      const autoSelectionSize = get().getAutoSelectionSize();
+      const initialSelection = getInitialSelection(autoSelectionSize);
 
-      // Auto-select remaining players
-      if (remainingNeeded > 0) {
-        getPlayerStore().selectPlayers(initialSelection);
-        get().autoSelectPlayers(remainingNeeded);
+      // Get available players excluding already selected ones
+      const remainingPlayers = sortedAvailablePlayers.filter(
+        (player) =>
+          !initialSelection.some((selected) => selected.id === player.id),
+      );
+
+      let attempts = 0;
+      const maxAttempts = 10;
+
+      // Check if initial player is part of a pair
+      const initialPlayer = initialSelection[0];
+      const isInitialPlayerPaired = initialPlayer && initialPlayer.partnerId;
+
+      // If initial player is not paired, handle the three scenarios:
+      // 1. 4 unpaired players
+      // 2. 1 pair + 2 unpaired players
+      // 3. 2 unpaired + 1 pair
+      if (!isInitialPlayerPaired && settings.allowPairs) {
+        while (attempts < maxAttempts) {
+          const randomSelection = [...initialSelection];
+          const remainingForSelection = [...remainingPlayers];
+
+          // Select second player
+          const secondPlayerIndex = Math.floor(
+            Math.random() * remainingForSelection.length,
+          );
+          const secondPlayer = remainingForSelection[secondPlayerIndex];
+          remainingForSelection.splice(secondPlayerIndex, 1);
+          randomSelection.push(secondPlayer);
+
+          // If second player is paired, add their partner and one unpaired
+          if (secondPlayer.partnerId) {
+            // Add partner of second player
+            const partner = remainingForSelection.find(
+              (p) => p.id === secondPlayer.partnerId,
+            );
+            if (partner) {
+              randomSelection.push(partner);
+              remainingForSelection.splice(
+                remainingForSelection.findIndex((p) => p.id === partner.id),
+                1,
+              );
+
+              // Find an unpaired player for the last slot
+              const unpairedPlayers = remainingForSelection.filter(
+                (p) => !p.partnerId,
+              );
+              if (unpairedPlayers.length > 0) {
+                const lastPlayer =
+                  unpairedPlayers[
+                    Math.floor(Math.random() * unpairedPlayers.length)
+                  ];
+                randomSelection.push(lastPlayer);
+              }
+            }
+          }
+          // If second player is unpaired
+          else {
+            // Select third player
+            const thirdPlayerIndex = Math.floor(
+              Math.random() * remainingForSelection.length,
+            );
+            const thirdPlayer = remainingForSelection[thirdPlayerIndex];
+            remainingForSelection.splice(thirdPlayerIndex, 1);
+            randomSelection.push(thirdPlayer);
+
+            // If third player is paired, add their partner (2 unpaired + 1 pair)
+            if (thirdPlayer.partnerId) {
+              const partner = remainingForSelection.find(
+                (p) => p.id === thirdPlayer.partnerId,
+              );
+              if (partner) {
+                randomSelection.push(partner);
+              }
+            }
+            // If third player is unpaired, add another unpaired (4 unpaired)
+            else {
+              const unpairedPlayers = remainingForSelection.filter(
+                (p) => !p.partnerId,
+              );
+              if (unpairedPlayers.length > 0) {
+                const lastPlayer =
+                  unpairedPlayers[
+                    Math.floor(Math.random() * unpairedPlayers.length)
+                  ];
+                randomSelection.push(lastPlayer);
+              }
+            }
+          }
+
+          // Check if we have a valid selection
+          const isValidSelection = randomSelection.every((player) =>
+            validatePlayerSelection({
+              playerToValidate: player,
+              selectedPlayers: randomSelection,
+              settings,
+            }),
+          );
+
+          if (
+            randomSelection.length === settings.playerNumber &&
+            isValidSelection
+          ) {
+            getPlayerStore().selectPlayers(randomSelection);
+            return;
+          }
+
+          attempts++;
+        }
       } else {
-        getPlayerStore().selectPlayers(initialSelection);
+        // Logic for when initial player is paired
+        // Two scenarios:
+        // 1. 2 pairs
+        // 2. 1 pair + 2 unpaired
+        while (attempts < maxAttempts) {
+          const randomSelection = [...initialSelection];
+          const remainingForSelection = [...remainingPlayers];
+
+          // Add partner of initial player
+          if (initialPlayer.partnerId) {
+            const partner = remainingForSelection.find(
+              (p) => p.id === initialPlayer.partnerId,
+            );
+            if (partner) {
+              randomSelection.push(partner);
+              remainingForSelection.splice(
+                remainingForSelection.findIndex((p) => p.id === partner.id),
+                1,
+              );
+            }
+          }
+
+          // Select third player
+          if (remainingForSelection.length > 0) {
+            const thirdPlayerIndex = Math.floor(
+              Math.random() * remainingForSelection.length,
+            );
+            const thirdPlayer = remainingForSelection[thirdPlayerIndex];
+            randomSelection.push(thirdPlayer);
+            remainingForSelection.splice(thirdPlayerIndex, 1);
+
+            // If third player is paired, add their partner (2 pairs)
+            if (thirdPlayer.partnerId) {
+              const partner = remainingForSelection.find(
+                (p) => p.id === thirdPlayer.partnerId,
+              );
+              if (partner) {
+                randomSelection.push(partner);
+              }
+            } else {
+              // If third player is unpaired, add another unpaired (1 pair + 2 unpaired)
+              const unpairedPlayers = remainingForSelection.filter(
+                (p) => !p.partnerId,
+              );
+              if (unpairedPlayers.length > 0) {
+                const lastPlayerIndex = Math.floor(
+                  Math.random() * unpairedPlayers.length,
+                );
+                const lastPlayer = unpairedPlayers[lastPlayerIndex];
+                randomSelection.push(lastPlayer);
+              }
+            }
+          }
+
+          // Check if we have a valid selection
+          const isValidSelection = randomSelection.every((player) =>
+            validatePlayerSelection({
+              playerToValidate: player,
+              selectedPlayers: randomSelection,
+              settings,
+            }),
+          );
+
+          if (
+            randomSelection.length === settings.playerNumber &&
+            isValidSelection
+          ) {
+            getPlayerStore().selectPlayers(randomSelection);
+            return;
+          }
+
+          attempts++;
+        }
       }
+
+      console.warn(
+        "Could not find valid player combination after",
+        maxAttempts,
+        "attempts",
+      );
     },
 
     releaseCourt: (courtId: string) => {
@@ -455,11 +599,14 @@ export const useGameStore = create<GameState>((set, get) => {
 
       // Update player statuses and queue numbers
       playersToRelease.forEach((player, playerToReleaseIndex) => {
-        getPlayerStore().updateQueueNumber(player.id, {
-          gameIndex: get().games.length + 1,
-          playerIndex: lastQueuedAvailablePlayers.length + playerToReleaseIndex,
+        getPlayerStore().updatePlayer(player.id, {
+          status: "available",
+          queueNumber: generateQueueNumber({
+            gameIndex: get().games.length + 1,
+            playerIndex:
+              lastQueuedAvailablePlayers.length + playerToReleaseIndex,
+          }),
         });
-        getPlayerStore().updatePlayerStatus(player.id, "available");
       });
 
       // Update court data
@@ -489,6 +636,12 @@ export const useGameStore = create<GameState>((set, get) => {
       };
 
       get().updateCourtData(courtId, updatedCourt);
+
+      const nextCourt = get().nextCourt;
+
+      if (nextCourt && nextCourt.id === courtId) {
+        get().setNextCourt(null);
+      }
     },
   };
 });

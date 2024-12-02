@@ -78,4 +78,5 @@ export function generateUniqueId() {
   }
 }
 
+export * from "./game-logic";
 export * from "./setup";
