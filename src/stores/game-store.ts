@@ -1,12 +1,11 @@
 import { create } from "zustand";
-import { usePlayerStore, usePairStore } from "@stores";
+import { usePlayerStore } from "@stores";
 import type { Court, CourtData, Game, Player } from "@types";
 import {
   buildInitialCourtData,
   COURT_IDS,
   generateQueueNumber,
   generateUniqueId,
-  validatePlayerSelection,
 } from "@utils";
 import { buildGameSettings, GameFormatType, GameSettings } from "@configs";
 
@@ -169,7 +168,6 @@ interface GameState {
  */
 export const useGameStore = create<GameState>((set, get) => {
   // Lazily get state stores to avoid circular dependency
-  const getPairStore = () => usePairStore.getState();
   const getPlayerStore = () => usePlayerStore.getState();
 
   return {
@@ -332,11 +330,9 @@ export const useGameStore = create<GameState>((set, get) => {
       get().settings.playerNumber - get().settings.suggestionSize,
 
     autoSelectPlayers: () => {
-      const { selectedPlayers, getSortedAvailablePlayers } = getPlayerStore();
-      const settings = get().settings;
+      const { getSortedAvailablePlayers } = getPlayerStore();
 
       const sortedAvailablePlayers = getSortedAvailablePlayers();
-      const autoSelectionSize = get().getAutoSelectionSize();
 
       if (!sortedAvailablePlayers.length) {
         return;
@@ -344,32 +340,7 @@ export const useGameStore = create<GameState>((set, get) => {
 
       const initialPlayer = sortedAvailablePlayers[0];
 
-      // Prepare pool of candidates
-      const candidates: Player[] = [initialPlayer];
-
-      if (settings.allowPairs) {
-        // Check if initial player is paired
-        const isInitialPaired = Boolean(
-          initialPlayer && (initialPlayer.partner || initialPlayer.partnerId),
-        );
-
-        // If initial player is paired, add the partner
-        if (isInitialPaired && initialPlayer.partner) {
-          candidates.push(initialPlayer.partner);
-        }
-      }
-
-      // Add remaining available players
-      if (candidates.length < autoSelectionSize) {
-        candidates.push(
-          ...sortedAvailablePlayers.slice(
-            candidates.length,
-            autoSelectionSize - candidates.length, // number of more players to add
-          ),
-        );
-      }
-
-      getPlayerStore().selectPlayers([...selectedPlayers, ...candidates]);
+      getPlayerStore().selectPlayer(initialPlayer);
     },
 
     suggestPlayers: () => {
@@ -383,203 +354,69 @@ export const useGameStore = create<GameState>((set, get) => {
           "Not enough available players for suggestion",
           sortedAvailablePlayers.length,
         );
+
+        return;
+      } else if (sortedAvailablePlayers.length === settings.playerNumber) {
+        getPlayerStore().selectPlayers(sortedAvailablePlayers);
+
         return;
       }
-
-      // Get initial selection
-      const autoSelectionSize = get().getAutoSelectionSize();
-      const initialSelection = getInitialSelection(autoSelectionSize);
-
-      // Get available players excluding already selected ones
-      const remainingPlayers = sortedAvailablePlayers.filter(
-        (player) =>
-          !initialSelection.some((selected) => selected.id === player.id),
-      );
 
       let attempts = 0;
       const maxAttempts = 10;
 
-      // Check if initial player is part of a pair
-      const initialPlayer = initialSelection[0];
-      const isInitialPlayerPaired = initialPlayer && initialPlayer.partnerId;
+      const getRandomPlayers = (initialRemainingPlayers: Player[]) => {
+        // Get initial selection
+        const autoSelectionSize = get().getAutoSelectionSize();
+        let selections = getInitialSelection(autoSelectionSize);
 
-      // If initial player is not paired, handle the three scenarios:
-      // 1. 4 unpaired players
-      // 2. 1 pair + 2 unpaired players
-      // 3. 2 unpaired + 1 pair
-      if (!isInitialPlayerPaired && settings.allowPairs) {
-        while (attempts < maxAttempts) {
-          const randomSelection = [...initialSelection];
-          const remainingForSelection = [...remainingPlayers];
+        // Get available players excluding already selected ones
+        const remainingPlayers = initialRemainingPlayers.filter(
+          (player) => !selections.some((selected) => selected.id === player.id),
+        );
 
-          // Select second player
-          const secondPlayerIndex = Math.floor(
-            Math.random() * remainingForSelection.length,
-          );
-          const secondPlayer = remainingForSelection[secondPlayerIndex];
-          remainingForSelection.splice(secondPlayerIndex, 1);
-          randomSelection.push(secondPlayer);
-
-          // If second player is paired, add their partner and one unpaired
-          if (secondPlayer.partnerId) {
-            // Add partner of second player
-            const partner = remainingForSelection.find(
-              (p) => p.id === secondPlayer.partnerId,
-            );
-            if (partner) {
-              randomSelection.push(partner);
-              remainingForSelection.splice(
-                remainingForSelection.findIndex((p) => p.id === partner.id),
-                1,
-              );
-
-              // Find an unpaired player for the last slot
-              const unpairedPlayers = remainingForSelection.filter(
-                (p) => !p.partnerId,
-              );
-              if (unpairedPlayers.length > 0) {
-                const lastPlayer =
-                  unpairedPlayers[
-                    Math.floor(Math.random() * unpairedPlayers.length)
-                  ];
-                randomSelection.push(lastPlayer);
-              }
-            }
-          }
-          // If second player is unpaired
-          else {
-            // Select third player
-            const thirdPlayerIndex = Math.floor(
-              Math.random() * remainingForSelection.length,
-            );
-            const thirdPlayer = remainingForSelection[thirdPlayerIndex];
-            remainingForSelection.splice(thirdPlayerIndex, 1);
-            randomSelection.push(thirdPlayer);
-
-            // If third player is paired, add their partner (2 unpaired + 1 pair)
-            if (thirdPlayer.partnerId) {
-              const partner = remainingForSelection.find(
-                (p) => p.id === thirdPlayer.partnerId,
-              );
-              if (partner) {
-                randomSelection.push(partner);
-              }
-            }
-            // If third player is unpaired, add another unpaired (4 unpaired)
-            else {
-              const unpairedPlayers = remainingForSelection.filter(
-                (p) => !p.partnerId,
-              );
-              if (unpairedPlayers.length > 0) {
-                const lastPlayer =
-                  unpairedPlayers[
-                    Math.floor(Math.random() * unpairedPlayers.length)
-                  ];
-                randomSelection.push(lastPlayer);
-              }
-            }
-          }
-
-          // Check if we have a valid selection
-          const isValidSelection = randomSelection.every((player) =>
-            validatePlayerSelection({
-              playerToValidate: player,
-              selectedPlayers: randomSelection,
-              settings,
-            }),
+        Array.from({ length: get().settings.suggestionSize }).forEach(() => {
+          const randomIndex = Math.floor(
+            Math.random() * remainingPlayers.length,
           );
 
-          if (
-            randomSelection.length === settings.playerNumber &&
-            isValidSelection
-          ) {
-            getPlayerStore().selectPlayers(randomSelection);
-            return;
-          }
+          const randomPlayer = remainingPlayers[randomIndex];
 
-          attempts++;
+          selections.push(randomPlayer);
+
+          remainingPlayers.splice(randomIndex, 1);
+        });
+
+        if (settings.allowPairs) {
+          selections = selections
+            .flatMap((player) =>
+              player.partner &&
+              !selections.some((s) => s.id === player.partnerId)
+                ? [player, player.partner]
+                : player,
+            )
+            .slice(0, settings.playerNumber);
+
+          const lastPlayerToSuggest: Player | undefined =
+            selections[settings.playerNumber - 1];
+
+          if (attempts >= maxAttempts) {
+            console.error("Failed to find valid suggestion after 10 attempts");
+          } else if (lastPlayerToSuggest?.partner) {
+            console.warn(
+              "Last player to suggest has a partner, retrying suggestion",
+            );
+            selections = getRandomPlayers(sortedAvailablePlayers);
+            attempts++;
+          }
         }
-      } else {
-        // Logic for when initial player is paired
-        // Two scenarios:
-        // 1. 2 pairs
-        // 2. 1 pair + 2 unpaired
-        while (attempts < maxAttempts) {
-          const randomSelection = [...initialSelection];
-          const remainingForSelection = [...remainingPlayers];
 
-          // Add partner of initial player
-          if (initialPlayer.partnerId) {
-            const partner = remainingForSelection.find(
-              (p) => p.id === initialPlayer.partnerId,
-            );
-            if (partner) {
-              randomSelection.push(partner);
-              remainingForSelection.splice(
-                remainingForSelection.findIndex((p) => p.id === partner.id),
-                1,
-              );
-            }
-          }
+        return selections;
+      };
 
-          // Select third player
-          if (remainingForSelection.length > 0) {
-            const thirdPlayerIndex = Math.floor(
-              Math.random() * remainingForSelection.length,
-            );
-            const thirdPlayer = remainingForSelection[thirdPlayerIndex];
-            randomSelection.push(thirdPlayer);
-            remainingForSelection.splice(thirdPlayerIndex, 1);
+      const playersToSuggest = getRandomPlayers(sortedAvailablePlayers);
 
-            // If third player is paired, add their partner (2 pairs)
-            if (thirdPlayer.partnerId) {
-              const partner = remainingForSelection.find(
-                (p) => p.id === thirdPlayer.partnerId,
-              );
-              if (partner) {
-                randomSelection.push(partner);
-              }
-            } else {
-              // If third player is unpaired, add another unpaired (1 pair + 2 unpaired)
-              const unpairedPlayers = remainingForSelection.filter(
-                (p) => !p.partnerId,
-              );
-              if (unpairedPlayers.length > 0) {
-                const lastPlayerIndex = Math.floor(
-                  Math.random() * unpairedPlayers.length,
-                );
-                const lastPlayer = unpairedPlayers[lastPlayerIndex];
-                randomSelection.push(lastPlayer);
-              }
-            }
-          }
-
-          // Check if we have a valid selection
-          const isValidSelection = randomSelection.every((player) =>
-            validatePlayerSelection({
-              playerToValidate: player,
-              selectedPlayers: randomSelection,
-              settings,
-            }),
-          );
-
-          if (
-            randomSelection.length === settings.playerNumber &&
-            isValidSelection
-          ) {
-            getPlayerStore().selectPlayers(randomSelection);
-            return;
-          }
-
-          attempts++;
-        }
-      }
-
-      console.warn(
-        "Could not find valid player combination after",
-        maxAttempts,
-        "attempts",
-      );
+      getPlayerStore().selectPlayers(playersToSuggest);
     },
 
     releaseCourt: (courtId: string) => {

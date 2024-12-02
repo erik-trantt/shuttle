@@ -47,16 +47,30 @@ const UserManagement: React.FC<UserManagementProps> = ({ isOpen, onClose }) => {
     if (selectedPartners.length === 2 && pairName.trim()) {
       createPair(pairName, selectedPartners[0], selectedPartners[1]);
 
-      selectedPartners.forEach((pairPlayerId) => {
-        const foundPlayer = players.find((p) => p.id === pairPlayerId);
+      const partnerA = players.find((p) => p.id === selectedPartners[0]);
+      const partnerB = players.find((p) => p.id === selectedPartners[1]);
 
-        if (foundPlayer) {
-          updatePlayer(pairPlayerId, {
-            partnerId: pairPlayerId,
-            partner: foundPlayer,
-          });
-        }
-      });
+      if (partnerA && partnerB) {
+        updatePlayer(partnerA.id, {
+          partnerId: partnerB.id,
+          partner: partnerB,
+        });
+        updatePlayer(partnerB.id, {
+          partnerId: partnerA.id,
+          partner: partnerA,
+        });
+      }
+
+      // selectedPartners.forEach((pairPlayerId) => {
+      //   const foundPlayer = players.find((p) => p.id === pairPlayerId);
+
+      //   if (foundPlayer) {
+      //     updatePlayer(pairPlayerId, {
+      //       partnerId: pairPlayerId,
+      //       partner: foundPlayer,
+      //     });
+      //   }
+      // });
 
       setSelectedPartners([]);
 
