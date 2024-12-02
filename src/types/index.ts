@@ -17,6 +17,7 @@ export interface Player {
   queueNumber: string;
   status: PlayerStatus;
   partnerId?: string;
+  partner?: Player;
 }
 
 export interface PlayerPair {

@@ -2,6 +2,7 @@ import { v4 as uuid } from "uuid";
 import { faker } from "@faker-js/faker";
 import { generateQueueNumber } from ".";
 import type { CourtData, Player } from "@types";
+import { buildGameSettings, GameSettings } from "@configs";
 
 export const COURT_IDS: string[] = [
   "62478d70-a53f-464f-b036-f380929a3584",
@@ -24,6 +25,10 @@ export const PLAYER_NAMES = faker.helpers.multiple(
     count: 21,
   },
 );
+
+export const buildInitialGameSettings = (): GameSettings => {
+  return buildGameSettings("DOUBLE");
+};
 
 export const buildInitialPlayers = (): Player[] => {
   return [...PLAYER_NAMES].map((name, index) => ({

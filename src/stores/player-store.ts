@@ -1,11 +1,13 @@
 import { create } from "zustand";
-import { useGameStore, usePairStore } from "@stores";
+import { useGameStore } from "@stores";
 import type { Player, PlayerStatus } from "@types";
 import {
   buildInitialPlayers,
   generateQueueNumber,
   generateUniqueId,
+  // getPairedPlayer,
   parseQueueNumberToOrder,
+  validatePlayerSelection,
 } from "@utils";
 
 interface PlayerState {
@@ -40,6 +42,14 @@ interface PlayerState {
   undeletePlayer: (id: string) => void;
 
   /**
+   * Updates a player
+   *
+   * @param id Player ID to update
+   * @param player New player data
+   */
+  updatePlayer: (id: string, player: Partial<Player>) => void;
+
+  /**
    * Updates a player's status
    *
    * @param id Player ID to update
@@ -57,6 +67,14 @@ interface PlayerState {
     id: string,
     queueData: { gameIndex: number; playerIndex: number },
   ) => void;
+
+  /**
+   * Gets initial selection for game
+   *
+   * @param size Number of players to select
+   * @returns List of initially selected players
+   */
+  getInitialSelection: (size: number) => Player[];
 
   /**
    * Gets available players
@@ -90,7 +108,7 @@ interface PlayerState {
    *
    * @param players Players to select
    */
-  selectPlayers: (players: Player[]) => void;
+  selectPlayers: (selectedPlayers: Player[]) => void;
 
   /**
    * Initializes the players store
@@ -103,14 +121,19 @@ interface PlayerState {
 export const usePlayerStore = create<PlayerState>((set, get) => {
   // Lazily get state stores to avoid circular dependency
   const getGameStore = () => useGameStore.getState();
-  const getPairStore = () => usePairStore.getState();
 
   return {
     players: [],
     selectedPlayers: [],
 
     initialize: () => {
-      set({ players: buildInitialPlayers() });
+      const initialPlayers = buildInitialPlayers();
+      const autoSelectionSize = getGameStore().getAutoSelectionSize();
+
+      const initialSelectedPlayers =
+        get().getInitialSelection(autoSelectionSize);
+
+      set({ players: initialPlayers, selectedPlayers: initialSelectedPlayers });
     },
 
     addPlayer: (name) => {
@@ -143,6 +166,23 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
 
     undeletePlayer: (id) => {
       get().updatePlayerStatus(id, "available");
+
+      const gameCount = getGameStore().getGameCount();
+      const lastQueuedAvailablePlayersCount =
+        get().getLastQueuedAvailablePlayers().length;
+
+      get().updateQueueNumber(id, {
+        gameIndex: gameCount > 0 ? gameCount + 1 : 0,
+        playerIndex: lastQueuedAvailablePlayersCount + 1,
+      });
+    },
+
+    updatePlayer: (id, player) => {
+      set((state) => ({
+        players: state.players.map((p) =>
+          p.id === id ? { ...p, ...player } : p,
+        ),
+      }));
     },
 
     updatePlayerStatus: (id, status) => {
@@ -164,6 +204,36 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
       }));
     },
 
+    getInitialSelection: (size) => {
+      const availablePlayers = get().getSortedAvailablePlayers();
+
+      if (availablePlayers.length === 0) {
+        return [];
+      }
+
+      const selection: Player[] = [];
+      let index = 0;
+
+      while (selection.length < size && index < availablePlayers.length) {
+        const player = availablePlayers[index];
+
+        // Add player and their pair if possible
+        if (player.partner) {
+          if (selection.length + 2 <= size) {
+            selection.push(player, player.partner);
+          }
+        } else {
+          if (selection.length + 1 <= size) {
+            selection.push(player);
+          }
+        }
+
+        index++;
+      }
+
+      return selection;
+    },
+
     getAvailablePlayers: () => {
       const players = get().players;
 
@@ -171,15 +241,15 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
     },
 
     getLastQueuedAvailablePlayers: (): Player[] => {
-      const { getGameCount } = getGameStore();
+      const gameCount = getGameStore().getGameCount();
       const players = get().players;
 
+      const prefix = (gameCount > 0 ? gameCount + 1 : 0)
+        .toString()
+        .padStart(3, "0");
+
       return players.filter(
-        (p) =>
-          p.status === "available" &&
-          p.queueNumber.startsWith(
-            (getGameCount() + 1).toString().padStart(3, "0"),
-          ),
+        (p) => p.status === "available" && p.queueNumber.startsWith(prefix),
       );
     },
 
@@ -207,23 +277,26 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
       } else {
         // Add player if not at max capacity
         const { settings } = getGameStore();
+
         if (currentSelection.length < settings.playerNumber) {
           currentSelection.push(player);
         }
       }
 
+      const canSelectPlayer = validatePlayerSelection({
+        playerToValidate: player,
+        selectedPlayers: currentSelection,
+        settings: getGameStore().settings,
+      });
+
       // Validate and update selection
-      const { validatePlayerSelection } = getPairStore();
-      if (validatePlayerSelection(currentSelection)) {
+      if (canSelectPlayer) {
         set({ selectedPlayers: currentSelection });
       }
     },
 
-    selectPlayers: (players) => {
-      const { validatePlayerSelection } = getPairStore();
-      if (validatePlayerSelection(players)) {
-        set({ selectedPlayers: players });
-      }
+    selectPlayers: (selectedPlayers) => {
+      set({ selectedPlayers });
     },
   };
 });

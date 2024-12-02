@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { useGameStore, usePlayerStore } from "@stores";
+import { usePlayerStore } from "@stores";
 import type { Player, PlayerPair } from "@types";
 import { generateUniqueId } from "@utils";
 
@@ -35,15 +35,7 @@ interface PairState {
    * @param playerId Player ID to find partner for
    * @returns The paired player or null if not paired
    */
-  getPairedPlayer: (playerId: string) => Player | null;
-
-  /**
-   * Gets initial selection for game
-   *
-   * @param size Number of players to select
-   * @returns List of initially selected players
-   */
-  getInitialSelection: (size: number) => Player[];
+  // getPairedPlayer: (playerId: string) => Player | null;
 
   /**
    * Checks if two players can be paired
@@ -60,14 +52,6 @@ interface PairState {
   getAvailablePlayersForPairing: () => Player[];
 
   /**
-   * Validates player selection based on game settings and pair status
-   *
-   * @param players Players to validate
-   * @returns Whether the selection is valid
-   */
-  validatePlayerSelection: (players: Player[]) => boolean;
-
-  /**
    * Gets all pairs
    *
    * @returns List of all pairs
@@ -77,7 +61,6 @@ interface PairState {
 
 export const usePairStore = create<PairState>((set, get) => {
   // Lazily get state stores to avoid circular dependency
-  const getGameStore = () => useGameStore.getState();
   const getPlayerStore = () => usePlayerStore.getState();
 
   return {
@@ -107,67 +90,19 @@ export const usePairStore = create<PairState>((set, get) => {
       }));
     },
 
-    getPairedPlayer: (playerId) => {
-      const { pairs } = get();
-      const { players } = getPlayerStore();
+    // getPairedPlayer: (playerId) => {
+    //   const { pairs } = get();
+    //   const { players } = getPlayerStore();
 
-      const pair = pairs.find((p) => p.playerIds.includes(playerId));
+    //   const pair = pairs.find((p) => p.playerIds.includes(playerId));
 
-      if (!pair) return null;
+    //   if (!pair) return null;
 
-      const partnerId =
-        pair.playerIds[0] === playerId ? pair.playerIds[1] : pair.playerIds[0];
+    //   const partnerId =
+    //     pair.playerIds[0] === playerId ? pair.playerIds[1] : pair.playerIds[0];
 
-      return players.find((p) => p.id === partnerId) || null;
-    },
-
-    validatePlayerSelection: (players) => {
-      const { settings } = getGameStore();
-      const { getPairedPlayer } = get();
-
-      // Check if selection size matches required player number
-      if (players.length > settings.playerNumber) {
-        return false;
-      }
-
-      // If no players selected, that's valid
-      if (players.length === 0) {
-        return true;
-      }
-
-      // Check if initial player is paired
-      const initialPlayer = players[0];
-      const isInitialPaired = getPairedPlayer(initialPlayer.id) !== null;
-
-      // Get paired and single players
-      const pairedPlayers = players.filter((player) =>
-        getPairedPlayer(player.id),
-      );
-      const singlePlayers = players.filter(
-        (player) => !getPairedPlayer(player.id),
-      );
-
-      if (isInitialPaired) {
-        // When initial player is paired, enforce paired double format
-        // Must have either 2 pairs (4 paired players) or 1 pair + 2 singles
-        return (
-          (pairedPlayers.length === 4 && singlePlayers.length === 0) ||
-          (pairedPlayers.length === 2 && singlePlayers.length === 2)
-        );
-      } else {
-        // For regular format, follow game settings
-        if (settings.allowPairs) {
-          // Allow mix of pairs and singles
-          return (
-            (pairedPlayers.length === 2 && singlePlayers.length === 2) ||
-            (pairedPlayers.length === 0 && singlePlayers.length === 4)
-          );
-        } else {
-          // No pairs allowed
-          return pairedPlayers.length === 0 && singlePlayers.length === 4;
-        }
-      }
-    },
+    //   return players.find((p) => p.id === partnerId) || null;
+    // },
 
     getAvailablePlayersForPairing: () => {
       const players = getPlayerStore().players;
@@ -178,37 +113,6 @@ export const usePairStore = create<PairState>((set, get) => {
           p.status === "available" &&
           !pairs.some((pair) => pair.playerIds.includes(p.id)),
       );
-    },
-
-    getInitialSelection: (size) => {
-      const { getSortedAvailablePlayers: getAvailablePlayers } =
-        getPlayerStore();
-      const availablePlayers = getAvailablePlayers();
-
-      if (availablePlayers.length === 0) return [];
-
-      const selection: Player[] = [];
-      let index = 0;
-
-      while (selection.length < size && index < availablePlayers.length) {
-        const player = availablePlayers[index];
-        const pairedPlayer = get().getPairedPlayer(player.id);
-
-        // Add player and their pair if possible
-        if (pairedPlayer) {
-          if (selection.length + 2 <= size) {
-            selection.push(player, pairedPlayer);
-          }
-        } else {
-          if (selection.length + 1 <= size) {
-            selection.push(player);
-          }
-        }
-
-        index++;
-      }
-
-      return selection;
     },
 
     canPairPlayers: (firstPlayerId, secondPlayerId) => {
