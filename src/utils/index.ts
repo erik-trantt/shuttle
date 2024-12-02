@@ -78,5 +78,36 @@ export function generateUniqueId() {
   }
 }
 
+/**
+ * Randomizes the order of an array in place.
+ * Using the Fisher-Yates algorithm for better time complexity.
+ * This copies the original array and returns a new array,
+ * so no optimization on space complexity, hence this is not suitable
+ * for large arrays.
+ *
+ * @param array The array to be randomized.
+ * @returns The randomized array.
+ */
+export function randomizeArray<T>(array: T[]): T[] {
+  const arrayCopy = [...array];
+
+  for (let i = arrayCopy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+
+    [arrayCopy[i], arrayCopy[j]] = [arrayCopy[j], arrayCopy[i]];
+  }
+
+  return arrayCopy;
+}
+
+/**
+ * Randomly picks an element from an array.
+ * @param array The array to pick from.
+ * @returns The randomly picked element.
+ */
+export function randomPick<T>(array: T[]): T {
+  return array[Math.floor(Math.random() * array.length)];
+}
+
 export * from "./game-logic";
 export * from "./setup";

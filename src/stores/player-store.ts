@@ -5,9 +5,7 @@ import {
   buildInitialPlayers,
   generateQueueNumber,
   generateUniqueId,
-  // getPairedPlayer,
   parseQueueNumberToOrder,
-  validatePlayerSelection,
 } from "@utils";
 
 interface PlayerState {
@@ -205,6 +203,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
     },
 
     getInitialSelection: (size) => {
+      const settings = getGameStore().settings;
       const availablePlayers = get().getSortedAvailablePlayers();
 
       if (availablePlayers.length === 0) {
@@ -217,15 +216,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
       while (selection.length < size && index < availablePlayers.length) {
         const player = availablePlayers[index];
 
-        // Add player and their pair if possible
-        if (player.partner) {
-          if (selection.length + 2 <= size) {
-            selection.push(player, player.partner);
-          }
-        } else {
-          if (selection.length + 1 <= size) {
-            selection.push(player);
-          }
+        selection.push(player);
+
+        if (settings.allowPairs && player.partner) {
+          selection.push(player.partner);
         }
 
         index++;
@@ -269,30 +263,31 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
 
     selectPlayer: (player) => {
       const currentSelection = [...get().selectedPlayers];
-      const playerIndex = currentSelection.findIndex((p) => p.id === player.id);
+      const settings = getGameStore().settings;
 
-      if (playerIndex !== -1) {
-        // Deselect player if already selected
-        currentSelection.splice(playerIndex, 1);
-      } else {
-        // Add player if not at max capacity
-        const { settings } = getGameStore();
+      const togglePlayer = (playerToToggle: Player) => {
+        const playerIndexToToggle = currentSelection.findIndex(
+          (p) => p.id === playerToToggle.id,
+        );
 
-        if (currentSelection.length < settings.playerNumber) {
-          currentSelection.push(player);
+        // Skip auto-selected players
+        if (playerIndexToToggle !== -1) {
+          // Deselect player if already selected
+          currentSelection.splice(playerIndexToToggle, 1);
+        } else if (currentSelection.length < settings.playerNumber) {
+          // Add player if not at max capacity
+          currentSelection.push(playerToToggle);
         }
+      };
+
+      if (!settings.allowPairs || !player.partner) {
+        togglePlayer(player);
+      } else if (currentSelection.length !== 3) {
+        togglePlayer(player);
+        togglePlayer(player.partner);
       }
 
-      const canSelectPlayer = validatePlayerSelection({
-        playerToValidate: player,
-        selectedPlayers: currentSelection,
-        settings: getGameStore().settings,
-      });
-
-      // Validate and update selection
-      if (canSelectPlayer) {
-        set({ selectedPlayers: currentSelection });
-      }
+      set({ selectedPlayers: currentSelection });
     },
 
     selectPlayers: (selectedPlayers) => {

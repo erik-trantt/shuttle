@@ -10,7 +10,23 @@ type CourtDisplayListItemProps = {
 };
 
 const CourtDisplay: React.FC = React.memo(() => {
-  const { courtData, releaseCourt, toggleCourtLock } = useGameStore();
+  const {
+    courtData,
+    releaseCourt,
+    toggleCourtLock,
+    getNextAvailableCourt,
+    setNextCourt,
+  } = useGameStore();
+
+  const handleReleaseCourt = (courtId: string) => {
+    releaseCourt(courtId);
+
+    const nextCourt = getNextAvailableCourt();
+
+    if (nextCourt) {
+      setNextCourt(nextCourt);
+    }
+  };
 
   const CourtDisplayListItem = React.memo(
     ({ data }: CourtDisplayListItemProps) => (
@@ -35,7 +51,7 @@ const CourtDisplay: React.FC = React.memo(() => {
               title={`Finish ${data.court.name}`}
               className="focus:outline-none enabled:text-red-500 enabled:hover:text-red-700 disabled:text-gray-500"
               disabled={!data.gameId}
-              onClick={() => releaseCourt(data.court.id)}
+              onClick={() => handleReleaseCourt(data.court.id)}
             >
               <X size="1em" />
             </button>
@@ -55,9 +71,13 @@ const CourtDisplay: React.FC = React.memo(() => {
 
   return (
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-      {Object.entries(courtData).map(([_id, data]) => (
-        <CourtDisplayListItem key={data.gameId || data.court.id} data={data} />
-      ))}
+      {courtData &&
+        Object.entries(courtData).map(([_id, data]) => (
+          <CourtDisplayListItem
+            key={data.gameId || data.court.id}
+            data={data}
+          />
+        ))}
     </div>
   );
 });

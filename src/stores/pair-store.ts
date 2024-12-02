@@ -90,20 +90,6 @@ export const usePairStore = create<PairState>((set, get) => {
       }));
     },
 
-    // getPairedPlayer: (playerId) => {
-    //   const { pairs } = get();
-    //   const { players } = getPlayerStore();
-
-    //   const pair = pairs.find((p) => p.playerIds.includes(playerId));
-
-    //   if (!pair) return null;
-
-    //   const partnerId =
-    //     pair.playerIds[0] === playerId ? pair.playerIds[1] : pair.playerIds[0];
-
-    //   return players.find((p) => p.id === partnerId) || null;
-    // },
-
     getAvailablePlayersForPairing: () => {
       const players = getPlayerStore().players;
       const pairs = get().pairs;
