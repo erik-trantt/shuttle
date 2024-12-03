@@ -50,7 +50,7 @@ const CourtDisplay: React.FC = React.memo(() => {
             <button
               title={`Finish ${data.court.name}`}
               className="focus:outline-none enabled:text-red-500 enabled:hover:text-red-700 disabled:text-gray-500"
-              disabled={!data.gameId}
+              disabled={!data.gameId && data.court.locked}
               onClick={() => handleReleaseCourt(data.court.id)}
             >
               <X size="1em" />

@@ -66,15 +66,7 @@ interface GameState {
    * @param courtId ID of the court to update
    * @param data Partial court data to update
    */
-  updateCourtData: (
-    courtId: string,
-    data: Partial<{
-      court: Partial<Court>;
-      gameId?: string;
-      game?: Game;
-      players: Player[];
-    }>,
-  ) => void;
+  updateCourtData: (courtId: string, data: Partial<CourtData[0]>) => void;
 
   /**
    * Starts a new game
@@ -295,7 +287,7 @@ export const useGameStore = create<GameState>((set, get) => {
 
       // Update court data
       get().updateCourtData(nextCourt.id, {
-        court: { status: "playing" },
+        court: { ...nextCourt, status: "playing" },
         gameId,
         game: newGame,
         players: selectedPlayers,
@@ -446,13 +438,23 @@ export const useGameStore = create<GameState>((set, get) => {
         });
       });
 
-      // Update court data
-      get().updateCourtData(courtId, {
-        court: { status: "available" },
-        gameId: undefined,
-        game: undefined,
+      const updatedCourtData: CourtData[0] = {
+        ...foundCourtData,
+        court: {
+          ...foundCourtData.court,
+          status: "available",
+        },
+        gameId: null,
+        game: null,
         players: [],
-      });
+      };
+
+      if (foundCourtData.court.locked) {
+        updatedCourtData.court.status = "unavailable";
+      }
+
+      // Update court data
+      get().updateCourtData(courtId, updatedCourtData);
     },
 
     toggleCourtLock: (courtId: string) => {

@@ -55,8 +55,8 @@ export type CourtData = Record<
   string,
   {
     court: Court;
-    gameId?: string;
-    game?: Game;
+    gameId?: string | null;
+    game?: Game | null;
     players: Player[];
   }
 >;
