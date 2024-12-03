@@ -109,5 +109,4 @@ export function randomPick<T>(array: T[]): T {
   return array[Math.floor(Math.random() * array.length)];
 }
 
-export * from "./game-logic";
 export * from "./setup";
