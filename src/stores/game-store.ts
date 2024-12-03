@@ -33,11 +33,6 @@ interface GameState {
   nextCourt: Court | null;
 
   /**
-   * Returns whether there is a next court
-   */
-  hasNextCourt: () => boolean;
-
-  /**
    * Returns the next available court
    *
    * @returns The next available court or null if no court is available
@@ -188,8 +183,6 @@ export const useGameStore = create<GameState>((set, get) => {
       });
     },
 
-    hasNextCourt: () => !!get().nextCourt,
-
     getNextAvailableCourt: () => {
       const courtData = get().courtData;
 
@@ -313,13 +306,20 @@ export const useGameStore = create<GameState>((set, get) => {
 
       // Reset selection state
       getPlayerStore().selectPlayers([]);
-      set({ nextCourt: null });
+
+      const nextAvailableCourt = get().getNextAvailableCourt();
+
+      set({ nextCourt: nextAvailableCourt });
     },
 
     canStartGame: () => {
-      const { settings, hasNextCourt } = get();
+      const { settings, getNextAvailableCourt } = get();
       const { selectedPlayers } = getPlayerStore();
-      return selectedPlayers.length === settings.playerNumber && hasNextCourt();
+      const nextCourt = getNextAvailableCourt();
+
+      return (
+        selectedPlayers.length === settings.playerNumber && nextCourt !== null
+      );
     },
 
     addGame: (game) => set((state) => ({ games: [...state.games, game] })),
@@ -474,11 +474,9 @@ export const useGameStore = create<GameState>((set, get) => {
 
       get().updateCourtData(courtId, updatedCourt);
 
-      const nextCourt = get().nextCourt;
+      const nextAvailableCourt = get().getNextAvailableCourt();
 
-      if (nextCourt && nextCourt.id === courtId) {
-        get().setNextCourt(null);
-      }
+      get().setNextCourt(nextAvailableCourt);
     },
   };
 });
