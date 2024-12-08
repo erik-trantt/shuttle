@@ -322,17 +322,16 @@ export const useGameStore = create<GameState>((set, get) => {
       get().settings.playerNumber - get().settings.suggestionSize,
 
     autoSelectPlayers: () => {
-      const { getSortedAvailablePlayers } = getPlayerStore();
+      const { getInitialSelection, selectPlayer } = getPlayerStore();
+      const autoSelectionSize = get().getAutoSelectionSize();
 
-      const sortedAvailablePlayers = getSortedAvailablePlayers();
+      const initialSelection = getInitialSelection(autoSelectionSize);
 
-      if (!sortedAvailablePlayers.length) {
+      if (!initialSelection.length) {
         return;
       }
 
-      const initialPlayer = sortedAvailablePlayers[0];
-
-      getPlayerStore().selectPlayer(initialPlayer);
+      initialSelection.forEach(selectPlayer);
     },
 
     suggestPlayers: () => {

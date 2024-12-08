@@ -7,6 +7,7 @@ import {
   generateUniqueId,
   parseQueueNumberToOrder,
 } from "@utils";
+import { getPackedSettings } from "http2";
 
 interface PlayerState {
   /**
@@ -262,8 +263,13 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
     getSelectedPlayers: () => get().selectedPlayers,
 
     selectPlayer: (player) => {
+      const { settings, getAutoSelectionSize } = getGameStore();
+
+      const initialSelection = get().getInitialSelection(
+        getAutoSelectionSize(),
+      );
+
       const currentSelection = [...get().selectedPlayers];
-      const settings = getGameStore().settings;
 
       const togglePlayer = (playerToToggle: Player) => {
         const playerIndexToToggle = currentSelection.findIndex(
@@ -279,6 +285,14 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
           currentSelection.push(playerToToggle);
         }
       };
+
+      const isInitialSelection =
+        currentSelection.length !== 0 &&
+        initialSelection.some((p) => p.id === player.id);
+
+      if (isInitialSelection) {
+        return;
+      }
 
       if (!settings.allowPairs || !player.partner) {
         togglePlayer(player);
